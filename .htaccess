@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /bcsflows/
+
+# Serve arquivos estáticos normalmente
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Redirecionar tudo para index.html (SPA)
+RewriteRule ^ index.html [L]
