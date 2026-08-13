@@ -17,11 +17,14 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Remove lock file
-        run: rm -f package-lock.json
+      - name: Clear npm cache and remove lock file
+        run: |
+          npm cache clean --force
+          rm -f package-lock.json
+          rm -rf node_modules
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build frontend
         run: npm run build
