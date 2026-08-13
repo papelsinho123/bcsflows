@@ -1,0 +1,50 @@
+name: Deploy to Locaweb FTP
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Prepare deploy package
+        run: |
+          rm -rf deploy || true
+          mkdir -p deploy
+          cp -r dist/* deploy/ || true
+          if [ -d api ]; then
+            mkdir -p deploy/api
+            cp -r api/* deploy/api/ || true
+            rm -f deploy/api/db.php || true
+          fi
+          if [ -f .htaccess ]; then
+            cp .htaccess deploy/.htaccess
+          fi
+          ls -la deploy
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: deploy
+          server-dir: public_html/bcsflows
+          git-ftp-args: --insecure
