@@ -51,6 +51,6 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
-          local-dir: deploy
-          server-dir: public_html/bcsflows
+          local-dir: ./deploy/
+          server-dir: public_html/bcsflows/
           git-ftp-args: --insecure
