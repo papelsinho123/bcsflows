@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BCS Flows</string>
+    <string name="title_activity_main">BCS Flows</string>
+    <string name="package_name">com.bcsflows.app</string>
+    <string name="custom_url_scheme">com.bcsflows.app</string>
+</resources>
