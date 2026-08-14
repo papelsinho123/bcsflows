@@ -7,7 +7,7 @@ import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
-import { findUserByCredentials, normalizeUserRole } from './utils/auth.js';
+import { canManageAdminFeatures, findUserByCredentials, normalizeUserRole } from './utils/auth.js';
 import { isSameData, loadServerData, saveToServer, syncWithServer } from './utils/storage.js';
 import './index.css';
 
@@ -378,7 +378,7 @@ export default function App() {
 
   const currentRole = normalizeUserRole(user?.role || '');
   const isMaster = currentRole === 'master';
-  const isAdmin = currentRole === 'admin' || isMaster;
+  const isAdmin = canManageAdminFeatures(user?.role || '');
   const canAccessSettings = isAdmin;
 
   const visibleNav = [

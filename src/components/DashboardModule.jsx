@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, Calendar, Box, ArrowRight, Users, FileText, MessageCircle, ChevronDown, ChevronUp, Truck } from 'lucide-react';
-import { normalizeUserRole } from '../utils/auth.js';
+import { canManageAdminFeatures, normalizeUserRole } from '../utils/auth.js';
 import { generateProfessionalSchedulesPdf, generateExternalRentalsPdf } from '../utils/pdfGenerator.js';
 
 function toDate(value) {
@@ -383,7 +383,7 @@ export default function DashboardModule({ events, inventory, users, config, onUs
   }, [events, eventRangeMap]);
 
   const currentUserRole = normalizeUserRole(currentUser?.role || '');
-  const canManageLeave = currentUserRole === 'master' || currentUserRole === 'admin';
+  const canManageLeave = canManageAdminFeatures(currentUser?.role || '');
 
   const transferDashboard = useMemo(() => {
     const transfers = new Map();

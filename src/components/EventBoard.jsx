@@ -5,7 +5,7 @@ import { Pencil, Trash2, CheckCircle2, FileText, MessageCircle, PlusCircle, Chev
 import { generateSeparationPdf, generateEventChecklistPdf, generateMountedItemsPdf } from '../utils/pdfGenerator.js';
 import { validateEventForm } from '../utils/validation.js';
 import { applyScheduledSectorTransfers, getEffectiveConsumptionDate, isTransferActiveOnDate } from '../utils/stockPlanning.js';
-import { normalizeUserRole } from '../utils/auth.js';
+import { canManageAdminFeatures, normalizeUserRole } from '../utils/auth.js';
 
 const defaultBoardTitles = ['INFORMAÇÕES DO EVENTO', 'MONTAGEM DO EVENTO', 'SEPARAR ITENS PARA O EVENTO', 'HOSPEDAGEM', 'DESLOCAMENTO', 'DESMONTAGEM'];
 
@@ -218,8 +218,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const [sectorEditDrafts, setSectorEditDrafts] = useState({});
 
   const currentUserRole = normalizeUserRole(user?.role || '');
-  const canManageEvents = currentUserRole === 'master' || currentUserRole === 'admin';
-  const canTransferItems = currentUserRole === 'master' || currentUserRole === 'admin';
+  const canManageEvents = canManageAdminFeatures(user?.role || '');
+  const canTransferItems = canManageAdminFeatures(user?.role || '');
 
   const safeEvents = Array.isArray(events) ? events : [];
   const visibleEventList = canManageEvents
@@ -279,7 +279,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const findInventoryItem = (id) => inventory.find((item) => String(item.id) === String(id)) || null;
 
   const createEvent = () => {
-    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
+    if (!canManageAdminFeatures(user?.role || '')) return;
 
     const errors = validateEventForm(form, newEventUserAssignments);
     setFormErrors(errors);
@@ -638,7 +638,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const completeEvent = (event) => {
-    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
+    if (!canManageAdminFeatures(user?.role || '')) return;
 
     const updated = { ...event, status: 'Concluído' };
     if (event.boards?.montagem?.length) {
@@ -648,7 +648,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const reopenEvent = (event) => {
-    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
+    if (!canManageAdminFeatures(user?.role || '')) return;
     updateEvent({ ...event, status: 'A Iniciar' });
   };
 
@@ -1830,6 +1830,17 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
             </div>
           )}
         </div>
+        {!canManageEvents && (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Sem permissão para criar ou gerenciar eventos.
+          </div>
+        )}
+        {canManageEvents && visibleEvents.length === 0 && !showEventForm && (
+          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+            <div className="font-semibold">Nenhum evento cadastrado.</div>
+            <div className="mt-2">Clique em “Novo Evento” para criar o primeiro evento.</div>
+          </div>
+        )}
         {importStatus && (
           <div className="mt-3 rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-700 shadow-sm">
             {importStatus}

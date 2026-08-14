@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import NeumorphicCard from './NeumorphicCard.jsx';
-import { normalizeUserRole } from '../utils/auth.js';
+import { canManageAdminFeatures, normalizeUserRole } from '../utils/auth.js';
 
 function formatWhatsappMask(value) {
   let digits = value.replace(/\D/g, '');
@@ -40,7 +40,7 @@ const CORE_EXPENSE_TYPES = ['HOSPEDAGEM', 'COMBUSTIVEL', 'ESTACIONAMENTO', 'OUTR
 
 export default function SettingsModule({ config, users, onUpdateConfig, onUpdateUsers, currentUser }) {
   const isMaster = normalizeUserRole(currentUser?.role || '') === 'master';
-  const canCreateUsers = isMaster;
+  const canCreateUsers = canManageAdminFeatures(currentUser?.role || '') && isMaster;
   const itemTypes = Array.isArray(config.itemTypes) ? config.itemTypes : [];
   const customItemTypes = itemTypes.filter((type) => !CORE_ITEM_TYPES.includes(type) && !HIDDEN_ITEM_TYPES.includes(type));
   const visibleItemTypes = Array.from(new Set([...itemTypes, ...CORE_ITEM_TYPES])).filter((type) => !HIDDEN_ITEM_TYPES.includes(type));

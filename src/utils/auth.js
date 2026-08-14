@@ -1,4 +1,27 @@
-export const normalizeUserRole = (role = '') => String(role || '').trim().toLowerCase();
+export const normalizeUserRole = (role = '') => {
+  const normalized = String(role || '').trim().toLowerCase();
+  if (!normalized) return 'user';
+
+  const aliases = {
+    master: 'master',
+    admin: 'admin',
+    administrador: 'admin',
+    administrator: 'admin',
+    'super admin': 'admin',
+    'super-admin': 'admin',
+    user: 'user',
+    usuario: 'user',
+    operador: 'user',
+    funcionario: 'user',
+  };
+
+  return aliases[normalized] || normalized;
+};
+
+export const canManageAdminFeatures = (role = '') => {
+  const normalizedRole = normalizeUserRole(role);
+  return normalizedRole === 'master' || normalizedRole === 'admin';
+};
 
 export const findUserByCredentials = (users = [], username = '', password = '') => {
   const safeUsers = Array.isArray(users)
