@@ -46,6 +46,19 @@ function formatShortDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+function formatAuditDateTime(value) {
+  if (!value) return 'Sem data';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function parseDateOnly(value) {
   if (!value) return null;
   const parsed = new Date(value);
@@ -246,12 +259,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   }, [events, transferForm.targetEventId]);
 
   if (!selectedEvent) {
-    return (
-      <div className="p-6 text-slate-600">
-        <div className="text-lg font-semibold">Nenhum evento selecionado</div>
-        <div className="text-sm mt-2">Selecione um evento na lista à esquerda ou crie um novo evento.</div>
-      </div>
-    );
+    return renderEventSelector();
   }
 
   const handleForm = (field, value) => {
@@ -656,7 +664,24 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const changeBoardItem = (event, boardKey, itemId, nextFields) => {
     if (event.status === 'Concluído') return;
-    const board = event.boards[boardKey].map((item) => (item.id === itemId ? { ...item, ...nextFields } : item));
+    const board = event.boards[boardKey].map((item) => {
+      if (item.id !== itemId) return item;
+
+      const updatedItem = { ...item, ...nextFields };
+
+      if (boardKey === 'separar' && nextFields.separated !== undefined) {
+        if (nextFields.separated === true && !item.separated) {
+          const newAuditTrail = addAuditTrail(item, 'separado');
+          updatedItem.auditTrail = newAuditTrail;
+        } else if (nextFields.separated === false && item.separated) {
+          const newAuditTrail = addAuditTrail(item, 'desmarcado');
+          updatedItem.auditTrail = newAuditTrail;
+        }
+      }
+
+      return updatedItem;
+    });
+
     const nextEvent = { ...event, boards: { ...event.boards, [boardKey]: board } };
     if (boardKey === 'montagem') {
       nextEvent.boards.separar = generateSeparationFromMontagem(nextEvent);
@@ -1275,9 +1300,32 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return activeItems.length > 0 && activeItems.every((item) => Boolean(item.separated));
   };
 
+  const addAuditTrail = (item, action) => {
+    const now = new Date().toISOString();
+    const trail = item.auditTrail || {};
+    const nextIndex = Object.keys(trail).length;
+    return {
+      ...trail,
+      [nextIndex]: {
+        action,
+        user: user?.name || 'Usuário',
+        userId: user?.id ?? null,
+        timestamp: now,
+      },
+    };
+  };
+
   const toggleMontagemCompletion = (event, item, checked) => {
     if (event.status === 'Concluído') return;
-    const updatedMontagem = event.boards.montagem.map((entry) => (entry.id === item.id ? { ...entry, checked } : entry));
+    const updatedMontagem = event.boards.montagem.map((entry) => {
+      if (entry.id !== item.id) return entry;
+      const newAuditTrail = addAuditTrail(entry, checked ? 'montado' : 'desmarcado');
+      return {
+        ...entry,
+        checked,
+        auditTrail: newAuditTrail,
+      };
+    });
     let updatedDesmontagem = event.boards.desmontagem;
 
     if (checked) {
@@ -1315,7 +1363,11 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const toggleDesmontagemCompletion = (event, item, checked) => {
     if (event.status === 'Concluído') return;
-    const updatedDesmontagem = event.boards.desmontagem.map((entry) => (entry.id === item.id ? { ...entry, checked } : entry));
+    const updatedDesmontagem = event.boards.desmontagem.map((entry) => {
+      if (entry.id !== item.id) return entry;
+      const newAuditTrail = addAuditTrail(entry, checked ? 'desmontado' : 'desmarcado');
+      return { ...entry, checked, auditTrail: newAuditTrail };
+    });
     updateEvent({ ...event, boards: { ...event.boards, desmontagem: updatedDesmontagem } });
   };
 
@@ -2570,6 +2622,15 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                           </div>
                                         )}
                                       </div>
+                                      {item.auditTrail && Object.keys(item.auditTrail).length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                          {Object.values(item.auditTrail).map((entry, idx) => (
+                                            <div key={idx} className="text-[10px] font-medium uppercase tracking-[0.15em] text-slate-500">
+                                              ({entry.action} por) {entry.user} • {formatAuditDateTime(entry.timestamp)}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
                                       <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
                                         <div className="flex flex-wrap items-center gap-2">
                                           <button className="neumorphic-button px-3 py-2" onClick={() => startEditingItem('montagem', item)} disabled={isEventCompleted}><Pencil className="h-4 w-4" /></button>
@@ -2648,6 +2709,15 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   Desmontado
                                 </label>
                               </div>
+                              {item.auditTrail && Object.keys(item.auditTrail).length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {Object.values(item.auditTrail).map((entry, idx) => (
+                                    <div key={idx} className="text-[10px] font-medium uppercase tracking-[0.15em] text-slate-500">
+                                      ({entry.action} por) {entry.user} • {formatAuditDateTime(entry.timestamp)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))
                         )}
@@ -3271,6 +3341,18 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                       Separado
                                     </label>
                                   </div>
+                                  {item.auditTrail && Object.keys(item.auditTrail).length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                      {Object.values(item.auditTrail)
+                                        .slice()
+                                        .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
+                                        .map((entry, idx) => (
+                                          <div key={`${entry.action}-${entry.timestamp || idx}`} className="text-[10px] font-medium uppercase tracking-[0.15em] text-slate-500">
+                                            ({entry.action === 'separado' ? 'separado' : entry.action === 'desmarcado' ? 'desmarcado' : 'alterado'}) por {entry.user || 'Usuário'} • {formatAuditDateTime(entry.timestamp)}
+                                          </div>
+                                        ))}
+                                    </div>
+                                  )}
                                   <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
                                     {item.transferReference && item.editable !== false && (
                                       <button className="neumorphic-button outline w-full px-3 py-2" onClick={() => cancelTransferEquipment(item.id)} disabled={selectedEvent.status === 'Concluído'}>Cancelar transferência</button>

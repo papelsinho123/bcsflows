@@ -424,6 +424,7 @@ export default function App() {
                 if (nav.id === 'events') {
                   setEventBoardResetKey((prev) => prev + 1);
                 }
+                console.log(`Navigating to ${nav.id}, canAccessSettings=${canAccessSettings}, route=${nav.id}`);
                 setRoute(nav.id);
               }}
             >
@@ -471,7 +472,7 @@ export default function App() {
               users={data.users}
             />
           )}
-          {route === 'inventory' && <InventoryModule inventory={data.inventory} events={data.events} onUpdateInventory={updateInventory} itemTypes={data.config.itemTypes} />}
+          {route === 'inventory' && <InventoryModule inventory={data.inventory} events={data.events} onUpdateInventory={updateInventory} itemTypes={data.config.itemTypes} currentUser={user} />}
           {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} />}
         </main>
 
