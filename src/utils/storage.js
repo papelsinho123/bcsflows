@@ -1,18 +1,8 @@
 const STORAGE_KEY = 'bcs_flows_data_v1';
 
-const getRemoteConfig = () => {
-  const fromWindow = typeof window !== 'undefined' ? window.__BCS_DB__ : undefined;
-  const envUrl = import.meta.env.VITE_SUPABASE_URL || fromWindow?.url;
-  const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || fromWindow?.anonKey;
-  const table = import.meta.env.VITE_BCS_TABLE_NAME || fromWindow?.table || 'bcs_flows_data';
-
-  if (!envUrl || !envKey) return null;
-
-  return {
-    url: String(envUrl).replace(/\/$/, ''),
-    anonKey: String(envKey),
-    table: String(table),
-  };
+const getApiBase = () => {
+  const fromWindow = typeof window !== 'undefined' ? window.__BCS_API_BASE__ : undefined;
+  return import.meta.env.VITE_API_BASE || fromWindow || '/bcsflows/api';
 };
 
 export const readLocalData = (fallback) => {
@@ -35,76 +25,37 @@ export const writeLocalData = (data) => {
 };
 
 export const loadRemoteData = async (fallback) => {
-  const config = getRemoteConfig();
-
-  if (!config) {
-    return readLocalData(fallback);
-  }
+  const base = getApiBase();
 
   try {
-    const response = await fetch(`${config.url}/rest/v1/${config.table}?select=id,payload&limit=1`, {
+    const response = await fetch(`${base}/sync.php`, {
       method: 'GET',
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     if (!response.ok) {
       return readLocalData(fallback);
     }
 
-    const rows = await response.json();
-    const payload = rows?.[0]?.payload;
-    if (!payload) {
+    const payload = await response.json();
+    if (!payload || typeof payload !== 'object') {
       return readLocalData(fallback);
     }
 
-    return JSON.parse(payload);
+    return payload.payload ?? payload;
   } catch (error) {
     return readLocalData(fallback);
   }
 };
 
 export const saveRemoteData = async (data) => {
-  const config = getRemoteConfig();
-
-  if (!config) {
-    return;
-  }
+  const base = getApiBase();
 
   try {
-    const response = await fetch(`${config.url}/rest/v1/${config.table}?select=id&limit=1`, {
-      method: 'GET',
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      return;
-    }
-
-    const rows = await response.json();
-    const payload = JSON.stringify(data);
-
-    const method = rows?.[0]?.id ? 'PATCH' : 'POST';
-    const endpoint = rows?.[0]?.id
-      ? `${config.url}/rest/v1/${config.table}?id=eq.${rows[0].id}`
-      : `${config.url}/rest/v1/${config.table}`;
-
-    await fetch(endpoint, {
-      method,
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({ payload }),
+    await fetch(`${base}/sync.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
   } catch (error) {
     // ignore remote write failures and keep local persistence

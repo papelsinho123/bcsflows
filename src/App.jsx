@@ -63,6 +63,7 @@ const initialData = {
 };
 
 const STORAGE_KEY = 'bcs_flows_data_v1';
+const assetUrl = (path) => `${import.meta.env.BASE_URL || '/'}${path}`.replace(/\/+/g, '/');
 
 const normalizeData = (stored) => {
   const source = typeof stored === 'string' ? JSON.parse(stored) : stored;
@@ -208,7 +209,7 @@ export default function App() {
   useEffect(() => {
     const loadMotivationalPhrase = async () => {
       try {
-        const response = await fetch('/frases_motivacionais.csv');
+        const response = await fetch(assetUrl('frases_motivacionais.csv'));
         if (!response.ok) {
           const fallbackRows = [
             { frase: 'Comece hoje, não amanhã.', autor: 'BCS Flows' },
@@ -278,9 +279,9 @@ export default function App() {
     }, 5000);
   };
 
-  const loginBackgroundVideo = '/brand-video.mp4';
-  const introLoginVideo = '/remova_os_botões_e_o_quadro_f.mp4';
-  const introLogoutVideo = '/transforme_essa_imagem_em_um_g.mp4';
+  const loginBackgroundVideo = assetUrl('brand-video.mp4');
+  const introLoginVideo = assetUrl('remova_os_botões_e_o_quadro_f.mp4');
+  const introLogoutVideo = assetUrl('transforme_essa_imagem_em_um_g.mp4');
   const formattedLoginDate = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -315,7 +316,7 @@ export default function App() {
       <div className="max-w-[1700px] mx-auto space-y-6">
         <header className="neumorphic-card p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <img src="/app-icon.png" alt="BCS Flows" className="h-12 w-12 rounded-lg object-cover shadow-md" />
+            <img src={assetUrl('app-icon.png')} alt="BCS Flows" className="h-12 w-12 rounded-lg object-cover shadow-md" />
             <div>
               <p className="text-slate-500">BCS Flows - <strong>Planejamento estratégico.</strong> Operação sem falhas.</p>
             </div>
