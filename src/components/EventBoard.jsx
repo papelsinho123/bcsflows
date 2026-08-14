@@ -152,7 +152,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default function EventBoard({ events, inventory, config, users, user, onEventsChange }) {
+export default function EventBoard({ events = [], inventory = [], config = {}, users = [], user, onEventsChange = () => {} }) {
   const [lastSavedError, setLastSavedError] = useState(null);
   useEffect(() => {
     try {
@@ -162,7 +162,7 @@ export default function EventBoard({ events, inventory, config, users, user, onE
       // ignore
     }
   }, []);
-  const [activeEventId, setActiveEventId] = useState(events[0]?.id || null);
+  const [activeEventId, setActiveEventId] = useState((Array.isArray(events) ? events : [])[0]?.id || null);
   const [form, setForm] = useState(getDefaultEventForm());
   const [showCompletedEvents, setShowCompletedEvents] = useState(false);
   const [newMontagemItem, setNewMontagemItem] = useState({ itemType: '', sector: 'SECRETARIA', customSector: '', quantity: 1, mountDate: '' });
@@ -216,12 +216,13 @@ export default function EventBoard({ events, inventory, config, users, user, onE
   const [sectorEditing, setSectorEditing] = useState(null);
   const [sectorEditDrafts, setSectorEditDrafts] = useState({});
 
-  const canManageEvents = user.role === 'master' || user.role === 'admin';
-  const canTransferItems = user.role === 'master' || user.role === 'admin';
+  const canManageEvents = user?.role === 'master' || user?.role === 'admin';
+  const canTransferItems = user?.role === 'master' || user?.role === 'admin';
 
+  const safeEvents = Array.isArray(events) ? events : [];
   const visibleEventList = canManageEvents
-    ? events
-    : events.filter((event) => event.users?.some((userId) => userId === user.id));
+    ? safeEvents
+    : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => userId === user?.id));
 
   const availableItemTypes = useMemo(() => [
     ...(config.itemTypes || []),
