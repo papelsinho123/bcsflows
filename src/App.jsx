@@ -436,11 +436,12 @@ export default function App() {
               autoPlay
               muted
               playsInline
+              style={{ filter: 'brightness(1.35) contrast(1.2) saturate(1.15)' }}
               onLoadedMetadata={(event) => {
                 event.target.playbackRate = 1.7;
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-slate-950/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-slate-900/10" />
             <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center text-white">
               <p className="text-xs font-semibold uppercase tracking-[0.38em] text-slate-200/90">
                 {showLoginVideo ? 'Carregando' : 'Até logo'}
@@ -469,9 +470,9 @@ export default function App() {
                 muted
                 loop
                 playsInline
-                style={{ background: 'rgba(50, 50, 50, 0.3)' }}
+                style={{ background: 'rgba(50, 50, 50, 0.3)', filter: 'brightness(1.28) contrast(1.12) saturate(1.1)' }}
               />
-              <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.22),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.6))]" />
+              <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.28),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.08),rgba(15,23,42,0.72))]" />
 
               <button
                 className="absolute top-4 right-4 z-20 neumorphic-button h-12 w-12 rounded-full p-0 flex-shrink-0 flex items-center justify-center"
