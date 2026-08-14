@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { findUserByCredentials } from './auth.js';
 
@@ -17,5 +18,15 @@ describe('findUserByCredentials', () => {
     ];
 
     expect(findUserByCredentials(users, 'andersonsiebre@bcs.com', 'anderson1')).toBeUndefined();
+  });
+
+  it('maps the database bootstrap to login columns expected by the app', () => {
+    const sql = fs.readFileSync(new URL('../../create_usuarios.sql', import.meta.url), 'utf8');
+
+    expect(sql.toLowerCase()).toContain('usuario');
+    expect(sql.toLowerCase()).toContain('password');
+    expect(sql.toLowerCase()).toContain('role');
+    expect(sql.toLowerCase()).toContain('andersonsiebre');
+    expect(sql.toLowerCase()).toContain('admin');
   });
 });

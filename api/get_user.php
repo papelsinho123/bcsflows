@@ -8,11 +8,20 @@ if ($id <= 0) {
   exit;
 }
 
-$stmt = $conn->prepare("SELECT id, nome, email FROM usuarios WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, nome, name, usuario, username, email, password, role, phone, leaveTaken, leaveRuleDays FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_assoc();
+
+if ($row) {
+  if (empty($row['name']) && !empty($row['nome'])) {
+    $row['name'] = $row['nome'];
+  }
+  if (empty($row['usuario']) && !empty($row['username'])) {
+    $row['usuario'] = $row['username'];
+  }
+}
 
 echo json_encode($row ?: []);
 $stmt->close();

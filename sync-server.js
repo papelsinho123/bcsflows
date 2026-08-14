@@ -1,13 +1,31 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+/**
+ * Server para sincronização em Node.js
+ * Funciona com Vite e pode ser usado no APK
+ */
+
+import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
 const DATA_FILE = path.join(__dirname, 'api', 'app_data.json');
 
-// Inicializar arquivo de dados
+app.use(express.json());
+
+// CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Inicializar arquivo se não existir
 const initializeDataFile = () => {
   if (!fs.existsSync(DATA_FILE)) {
     const initialData = {
@@ -111,72 +129,52 @@ const initializeDataFile = () => {
       events: [],
     };
 
+    // Criar diretório se não existir
     fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-    console.log('✅ app_data.json criado com dados padrão');
   }
 };
 
-// Middleware de sincronização
-const syncMiddleware = (req, res, next) => {
-  if (req.url === '/bcsflows/api/sync-simple.php') {
-    if (req.method === 'GET') {
-      try {
-        initializeDataFile();
-        const content = fs.readFileSync(DATA_FILE, 'utf-8');
-        const payload = JSON.parse(content);
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ payload }));
-      } catch (error) {
-        console.error('❌ Erro ao ler dados:', error.message);
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ payload: null }));
-      }
-    } else if (req.method === 'POST') {
-      let body = '';
-      req.on('data', (chunk) => {
-        body += chunk.toString();
-      });
-      req.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          if (!data.updatedAt) {
-            data.updatedAt = Date.now();
-          }
-          fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-          fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-          console.log(`✅ Dados salvos (${new Date().toLocaleTimeString()})`);
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ success: true, saved: true, timestamp: data.updatedAt }));
-        } catch (error) {
-          console.error('❌ Erro ao salvar dados:', error.message);
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 500;
-          res.end(JSON.stringify({ error: 'Failed to save data' }));
-        }
-      });
-    } else if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-      res.end();
+// GET - Carregar dados
+app.get('/bcsflows/api/sync-simple.php', (req, res) => {
+  try {
+    initializeDataFile();
+    const content = fs.readFileSync(DATA_FILE, 'utf-8');
+    const payload = JSON.parse(content);
+    res.json({ payload });
+  } catch (error) {
+    console.error('Erro ao ler dados:', error);
+    res.status(200).json({ payload: null });
+  }
+});
+
+// POST - Salvar dados
+app.post('/bcsflows/api/sync-simple.php', (req, res) => {
+  try {
+    const data = req.body;
+
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ error: 'Invalid JSON' });
     }
-    return;
-  }
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  next();
-};
 
-export default defineConfig({
-  base: '/bcsflows/',
-  plugins: [react()],
-  server: {
-    port: 4173,
-    host: '0.0.0.0',
-    middleware: [syncMiddleware],
-  },
-  preview: {
-    port: 4173,
-    host: '0.0.0.0',
-  },
+    if (!data.updatedAt) {
+      data.updatedAt = Date.now();
+    }
+
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+    console.log(`✅ Dados salvos (${new Date().toLocaleTimeString()})`);
+    res.json({ success: true, saved: true, timestamp: data.updatedAt });
+  } catch (error) {
+    console.error('Erro ao salvar dados:', error);
+    res.status(500).json({ error: 'Failed to save data' });
+  }
+});
+
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`\n✅ Servidor de Sincronização rodando em http://localhost:${PORT}`);
+  console.log(`📡 API disponível em http://localhost:${PORT}/bcsflows/api/sync-simple.php\n`);
+  initializeDataFile();
 });
