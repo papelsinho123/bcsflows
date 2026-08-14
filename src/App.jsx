@@ -279,8 +279,8 @@ export default function App() {
     }, 5000);
   };
 
-  const loginBackgroundVideo = assetUrl('background-video.mp4');
-  const introLoginVideo = assetUrl('login-intro.mp4');
+  const loginBackgroundVideo = assetUrl('login-intro.mp4');
+  const introLoginVideo = assetUrl('logout-intro.mp4');
   const introLogoutVideo = assetUrl('logout-intro.mp4');
   const formattedLoginDate = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
