@@ -70,28 +70,46 @@ export const loadRemoteData = async (fallback) => {
   const base = getApiBase();
 
   try {
-    log(`Fetching from ${base}/sync.php...`);
-    const response = await fetch(`${base}/sync.php`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-cache',
-    });
+    // Tentar sync-simple.php primeiro (sem banco de dados)
+    // Depois fallback para sync.php (com banco de dados)
+    const endpoints = [
+      `${base}/sync-simple.php`,
+      `${base}/sync.php`
+    ];
 
-    if (!response.ok) {
-      log(`Remote fetch failed with status ${response.status}`);
-      return mergeAppData(readLocalData(fallback), null);
+    for (const endpoint of endpoints) {
+      try {
+        log(`Tentando: ${endpoint}...`);
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-cache',
+        });
+
+        if (!response.ok) {
+          log(`${endpoint} retornou ${response.status}, tentando próximo...`);
+          continue;
+        }
+
+        const payload = await response.json();
+        const remotePayload = payload && typeof payload === 'object' ? (payload.payload ?? payload) : null;
+        
+        if (!remotePayload || typeof remotePayload !== 'object') {
+          log(`${endpoint} payload inválido, tentando próximo...`);
+          continue;
+        }
+
+        log(`✅ Sucesso com ${endpoint}`, { updatedAt: remotePayload?.updatedAt, hasUsers: !!remotePayload?.users?.length });
+        return mergeAppData(readLocalData(fallback), remotePayload);
+      } catch (error) {
+        log(`Erro em ${endpoint}:`, error.message);
+        continue;
+      }
     }
 
-    const payload = await response.json();
-    const remotePayload = payload && typeof payload === 'object' ? (payload.payload ?? payload) : null;
-    
-    if (!remotePayload || typeof remotePayload !== 'object') {
-      log('Remote payload is empty or invalid');
-      return mergeAppData(readLocalData(fallback), null);
-    }
-
-    log('Remote data loaded successfully:', { updatedAt: remotePayload?.updatedAt, hasUsers: !!remotePayload?.users?.length });
-    return mergeAppData(readLocalData(fallback), remotePayload);
+    // Se nenhum endpoint funcionou, usar dados locais
+    log('Nenhum endpoint funcionou, usando dados locais');
+    return mergeAppData(readLocalData(fallback), null);
   } catch (error) {
     log('Remote sync error:', error.message);
     return mergeAppData(readLocalData(fallback), null);
@@ -101,29 +119,39 @@ export const loadRemoteData = async (fallback) => {
 export const saveRemoteData = async (data) => {
   const base = getApiBase();
 
-  try {
-    const snapshot = withTimestamp(data);
-    log(`Sending data to ${base}/sync.php...`);
-    
-    const response = await fetch(`${base}/sync.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(snapshot),
-    });
+  // Tentar sync-simple.php primeiro, depois sync.php
+  const endpoints = [
+    `${base}/sync-simple.php`,
+    `${base}/sync.php`
+  ];
 
-    if (!response.ok) {
-      log(`Remote save failed with status ${response.status}`);
-      const errorText = await response.text();
-      log('Error response:', errorText);
-      throw new Error('sync_failed');
+  for (const endpoint of endpoints) {
+    try {
+      const snapshot = withTimestamp(data);
+      log(`Enviando para ${endpoint}...`);
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot),
+      });
+
+      if (!response.ok) {
+        log(`${endpoint} retornou ${response.status}, tentando próximo...`);
+        continue;
+      }
+
+      const result = await response.json();
+      log(`✅ Enviado com sucesso para ${endpoint}`, result);
+      return; // Sucesso
+    } catch (error) {
+      log(`Erro ao enviar para ${endpoint}:`, error.message);
+      continue;
     }
-
-    const result = await response.json();
-    log('Remote save successful:', result);
-  } catch (error) {
-    log('Remote save error (will retry later):', error.message);
-    // Não lance erro - dados continuam salvos localmente e sincronizarão novamente
   }
+
+  log('Não foi possível sincronizar com servidor (dados continuam salvos localmente)');
+  // Não lance erro - dados continuam salvos localmente e sincronizarão novamente
 };
 
 export const persistAppData = async (data) => {

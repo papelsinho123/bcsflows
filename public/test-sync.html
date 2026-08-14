@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Sincronização BCS Flows</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.ok {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .code {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Teste de Sincronização - BCS Flows</h1>
+    
+    <div class="card">
+        <h2>1️⃣ Verificar localStorage Local</h2>
+        <button onclick="checkLocalStorage()">Verificar localStorage</button>
+        <div id="localStorage-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>2️⃣ Verificar Servidor de Sincronização</h2>
+        <button onclick="testServerConnection()">Testar conexão com servidor</button>
+        <div id="server-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>3️⃣ Verificar Banco de Dados</h2>
+        <button onclick="checkDatabase()">Verificar banco de dados</button>
+        <div id="database-result"></div>
+    </div>
+
+    <div class="card">
+        <h2>4️⃣ Teste de Login</h2>
+        <table>
+            <tr>
+                <th>Usuário</th>
+                <th>Senha</th>
+                <th>Deve Funcionar</th>
+            </tr>
+            <tr>
+                <td>andersonsiebre</td>
+                <td>anderson1</td>
+                <td>✅ Sim (Master)</td>
+            </tr>
+            <tr>
+                <td>admin</td>
+                <td>admin</td>
+                <td>✅ Sim (Admin)</td>
+            </tr>
+            <tr>
+                <td>user</td>
+                <td>user</td>
+                <td>✅ Sim (User)</td>
+            </tr>
+        </table>
+        <p style="color: #d9534f;"><strong>❌ ATENÇÃO:</strong> Não use email (admin@bcs.com) para login! Use o campo <strong>usuário</strong></p>
+    </div>
+
+    <div class="card">
+        <h2>5️⃣ Solução Rápida</h2>
+        <p>Se a sincronização não funciona, siga os passos:</p>
+        <ol>
+            <li><strong>Verifique se db.php está configurado:</strong>
+                <div class="code">// api/db.php
+$db_host = 'seu-host.com.br';
+$db_user = 'seu_usuario';
+$db_pass = 'sua_senha';
+$db_name = 'seu_banco';</div>
+            </li>
+            <li><strong>Crie a tabela no banco:</strong>
+                <div class="code">CREATE TABLE IF NOT EXISTS app_data (
+  id INT PRIMARY KEY DEFAULT 1,
+  payload JSON NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</div>
+            </li>
+            <li><strong>Teste a conexão:</strong>
+                <button onclick="testServerConnection()">Testar agora</button>
+            </li>
+        </ol>
+    </div>
+
+    <script>
+        function checkLocalStorage() {
+            const result = document.getElementById('localStorage-result');
+            try {
+                const data = localStorage.getItem('bcs_flows_data_v1');
+                if (!data) {
+                    result.innerHTML = '<div class="status error">❌ Nenhum dado encontrado no localStorage</div>';
+                    return;
+                }
+                const parsed = JSON.parse(data);
+                const users = parsed.users?.length || 0;
+                const events = parsed.events?.length || 0;
+                const timestamp = new Date(parsed.updatedAt).toLocaleString('pt-BR');
+                
+                result.innerHTML = `
+                    <div class="status ok">✅ Dados encontrados no localStorage</div>
+                    <table>
+                        <tr><th>Propriedade</th><th>Valor</th></tr>
+                        <tr><td>Usuários</td><td>${users}</td></tr>
+                        <tr><td>Eventos</td><td>${events}</td></tr>
+                        <tr><td>Última Atualização</td><td>${timestamp}</td></tr>
+                    </table>
+                    <details>
+                        <summary>Ver dados completos (JSON)</summary>
+                        <div class="code">${JSON.stringify(parsed, null, 2)}</div>
+                    </details>
+                `;
+            } catch (error) {
+                result.innerHTML = `<div class="status error">❌ Erro: ${error.message}</div>`;
+            }
+        }
+
+        function testServerConnection() {
+            const result = document.getElementById('server-result');
+            result.innerHTML = '<div class="status info">⏳ Testando conexão...</div>';
+
+            fetch('/bcsflows/api/sync.php')
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    const hasPayload = data.payload && Object.keys(data.payload).length > 0;
+                    const users = data.payload?.users?.length || 0;
+                    const events = data.payload?.events?.length || 0;
+
+                    result.innerHTML = `
+                        <div class="status ok">✅ Servidor respondeu com sucesso</div>
+                        <table>
+                            <tr><th>Propriedade</th><th>Valor</th></tr>
+                            <tr><td>Banco tem dados</td><td>${hasPayload ? 'Sim' : 'Não (vazio)'}</td></tr>
+                            <tr><td>Usuários no banco</td><td>${users}</td></tr>
+                            <tr><td>Eventos no banco</td><td>${events}</td></tr>
+                        </table>
+                        <p><strong>✅ Conclusão:</strong> Servidor está respondendo. A sincronização deveria funcionar!</p>
+                    `;
+                })
+                .catch(error => {
+                    result.innerHTML = `
+                        <div class="status error">❌ Erro na conexão: ${error.message}</div>
+                        <p><strong>Possíveis problemas:</strong></p>
+                        <ul>
+                            <li>Servidor está desligado</li>
+                            <li>URL da API está incorreta</li>
+                            <li>CORS bloqueando requisição</li>
+                            <li>Banco de dados não está acessível</li>
+                        </ul>
+                    `;
+                });
+        }
+
+        function checkDatabase() {
+            const result = document.getElementById('database-result');
+            result.innerHTML = '<div class="status info">⏳ Verificando banco...</div>';
+
+            fetch('/bcsflows/api/sync.php', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.payload) {
+                        result.innerHTML = `
+                            <div class="status error">❌ Banco vazio ou não conectado</div>
+                            <p>Execute este SQL para inicializar:</p>
+                            <div class="code">INSERT INTO app_data (id, payload) VALUES (1, '{}');</div>
+                        `;
+                    } else {
+                        result.innerHTML = `
+                            <div class="status ok">✅ Banco tem dados</div>
+                            <p>A sincronização está funcionando!</p>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    result.innerHTML = `
+                        <div class="status error">❌ Não foi possível conectar ao banco: ${error.message}</div>
+                    `;
+                });
+        }
+
+        // Auto-verificar ao carregar
+        window.addEventListener('load', () => {
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>
