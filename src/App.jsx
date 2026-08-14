@@ -7,7 +7,7 @@ import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
-import { loadRemoteData, persistAppData, readLocalData } from './utils/storage.js';
+import { isSameData, loadRemoteData, persistAppData, readLocalData } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
