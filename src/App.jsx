@@ -181,17 +181,38 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    let syncInterval = null;
 
     const hydrateData = async () => {
-      const persisted = await loadRemoteData(readLocalData(initialData));
-      if (isMounted) {
-        setData(normalizeData(persisted));
-      }
+      const localState = readLocalData(initialData);
+      const remoteState = await loadRemoteData(localState);
+      if (!isMounted) return;
+
+      const nextState = normalizeData(remoteState && typeof remoteState === 'object' ? remoteState : localState);
+      setData(nextState);
     };
 
     hydrateData();
+
+    syncInterval = window.setInterval(async () => {
+      const remoteState = await loadRemoteData(readLocalData(data));
+      if (!isMounted) return;
+
+      const normalizedRemote = normalizeData(remoteState);
+      setData((prev) => {
+        if (isSameData(prev, normalizedRemote)) {
+          return prev;
+        }
+
+        return normalizedRemote;
+      });
+    }, 5000);
+
     return () => {
       isMounted = false;
+      if (syncInterval) {
+        window.clearInterval(syncInterval);
+      }
     };
   }, []);
 

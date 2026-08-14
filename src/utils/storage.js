@@ -24,6 +24,8 @@ export const writeLocalData = (data) => {
   }
 };
 
+export const isSameData = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
 export const loadRemoteData = async (fallback) => {
   const base = getApiBase();
 
@@ -52,11 +54,15 @@ export const saveRemoteData = async (data) => {
   const base = getApiBase();
 
   try {
-    await fetch(`${base}/sync.php`, {
+    const response = await fetch(`${base}/sync.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+
+    if (!response.ok) {
+      throw new Error('sync_failed');
+    }
   } catch (error) {
     // ignore remote write failures and keep local persistence
   }
