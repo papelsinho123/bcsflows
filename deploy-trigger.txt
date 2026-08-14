@@ -1,0 +1,5 @@
+Triggering automatic deploy to Locaweb via GitHub Actions.
+
+This file was created to trigger the workflow that builds the project and uploads to public_html/bcsflows via FTP.
+
+Timestamp: 2026-08-13T20:39:13Z
