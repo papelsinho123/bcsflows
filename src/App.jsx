@@ -202,6 +202,7 @@ export default function App() {
 
     hydrateData();
 
+    // Sincronização a cada 3 segundos
     syncInterval = window.setInterval(async () => {
       const localState = readLocalData(dataRef.current ?? initialData);
       const remoteState = await loadRemoteData(localState);
@@ -216,13 +217,34 @@ export default function App() {
 
         return normalizedRemote;
       });
-    }, 5000);
+    }, 3000);
+
+    // Sincroniza quando a aba/app volta ao foco
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const localState = readLocalData(dataRef.current ?? initialData);
+        const remoteState = await loadRemoteData(localState);
+        if (!isMounted) return;
+
+        const mergedState = mergeAppData(localState, remoteState);
+        const normalizedRemote = normalizeData(mergedState);
+        setData((prev) => {
+          if (isSameData(prev, normalizedRemote)) {
+            return prev;
+          }
+          return normalizedRemote;
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
       if (syncInterval) {
         window.clearInterval(syncInterval);
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
