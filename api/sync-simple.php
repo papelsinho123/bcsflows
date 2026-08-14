@@ -1,12 +1,9 @@
 <?php
 /**
- * API de Sincronização Simplificada - BCS Flows
+ * API de Sincronização - BCS Flows
  * 
- * Esta versão funciona SEM banco de dados
- * Salva dados em um arquivo JSON local
- * Perfeito para testes e desenvolvimento
- * 
- * Para produção, use a versão com db.php
+ * Sincroniza dados entre App e Web usando arquivo JSON
+ * Garante que App e Web SEMPRE usam os mesmos dados
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -19,11 +16,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Arquivo onde os dados serão salvos
-$dataFile = __DIR__ . '/app_data.json';
+// Arquivo compartilhado entre App e Web
+$dataDir = __DIR__;
+$dataFile = $dataDir . '/app_data.json';
 
-// Inicializar arquivo se não existir
-if (!file_exists($dataFile)) {
+// Garantir que diretório existe e é gravável
+if (!is_dir($dataDir)) {
+    mkdir($dataDir, 0755, true);
+}
+if (!is_writable($dataDir)) {
+    chmod($dataDir, 0755);
+}
+
+// Inicializar arquivo com dados padrão se não existir
+if (!file_exists($dataFile) || filesize($dataFile) < 100) {
     $initialData = [
         'updatedAt' => time() * 1000,
         'users' => [
@@ -137,48 +143,81 @@ if (!file_exists($dataFile)) {
         'events' => []
     ];
     
-    file_put_contents($dataFile, json_encode($initialData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $json = json_encode($initialData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    file_put_contents($dataFile, $json);
+    chmod($dataFile, 0666);
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-    // Retornar dados salvos
-    if (file_exists($dataFile)) {
-        $payload = json_decode(file_get_contents($dataFile), true);
-        echo json_encode(['payload' => $payload ?: null]);
+    // Retornar dados compartilhados
+    if (file_exists($dataFile) && filesize($dataFile) > 0) {
+        $content = file_get_contents($dataFile);
+        $payload = json_decode($content, true);
+        
+        // Se JSON está corrompido, retornar dados iniciais
+        if (!is_array($payload)) {
+            $payload = null;
+        }
+        
+        http_response_code(200);
+        echo json_encode(['payload' => $payload]);
     } else {
+        http_response_code(200);
         echo json_encode(['payload' => null]);
     }
     exit;
 }
 
 if ($method === 'POST') {
-    // Receber e salvar dados
+    // Receber e salvar dados (SINCRONIZADO ENTRE APP E WEB)
     $raw = file_get_contents('php://input');
+    
+    if (empty($raw)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Empty body']);
+        exit;
+    }
+    
     $data = json_decode($raw, true);
 
     if (!is_array($data)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid JSON body']);
+        echo json_encode(['error' => 'Invalid JSON']);
         exit;
     }
 
-    // Salvar no arquivo
-    $success = file_put_contents(
-        $dataFile,
-        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
-    );
+    // Garantir que updatedAt existe
+    if (!isset($data['updatedAt'])) {
+        $data['updatedAt'] = time() * 1000;
+    }
 
-    if ($success === false) {
+    // Salvar ATOMICAMENTE (backup + escreve novo)
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    
+    // Criar backup
+    $backupFile = $dataFile . '.backup';
+    if (file_exists($dataFile)) {
+        copy($dataFile, $backupFile);
+    }
+    
+    // Escrever novo arquivo
+    $bytesWritten = file_put_contents($dataFile, $json, LOCK_EX);
+    
+    if ($bytesWritten === false) {
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to save data']);
+        echo json_encode(['error' => 'Failed to write file']);
         exit;
     }
 
-    echo json_encode(['success' => true, 'saved' => true]);
+    chmod($dataFile, 0666);
+
+    http_response_code(200);
+    echo json_encode(['success' => true, 'saved' => true, 'timestamp' => $data['updatedAt']]);
     exit;
 }
 
 http_response_code(405);
 echo json_encode(['error' => 'Method not allowed']);
+

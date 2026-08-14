@@ -8,7 +8,7 @@ import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
 import { findUserByCredentials } from './utils/auth.js';
-import { isSameData, loadRemoteData, mergeAppData, persistAppData, readLocalData } from './utils/storage.js';
+import { isSameData, loadServerData, saveToServer, syncWithServer } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
@@ -190,50 +190,52 @@ export default function App() {
     let isMounted = true;
     let syncInterval = null;
 
+    // Carregar dados do servidor na inicialização
     const hydrateData = async () => {
-      const localState = readLocalData(initialData);
-      const remoteState = await loadRemoteData(localState);
+      const serverData = await loadServerData();
       if (!isMounted) return;
 
-      const mergedState = mergeAppData(localState, remoteState);
-      const nextState = normalizeData(mergedState && typeof mergedState === 'object' ? mergedState : localState);
-      setData(nextState);
+      if (serverData) {
+        const nextState = normalizeData(serverData);
+        setData(nextState);
+      } else {
+        // Fallback para initialData se servidor não responde
+        const nextState = normalizeData(initialData);
+        setData(nextState);
+      }
     };
 
     hydrateData();
 
-    // Sincronização a cada 3 segundos
+    // Sincronizar com servidor a cada 2 segundos (FORÇADO, não condicional)
     syncInterval = window.setInterval(async () => {
-      const localState = readLocalData(dataRef.current ?? initialData);
-      const remoteState = await loadRemoteData(localState);
       if (!isMounted) return;
+      
+      const serverData = await loadServerData();
+      if (!serverData) return; // Se servidor não responde, não muda nada
 
-      const mergedState = mergeAppData(localState, remoteState);
-      const normalizedRemote = normalizeData(mergedState);
       setData((prev) => {
-        if (isSameData(prev, normalizedRemote)) {
+        const mergedData = syncWithServer(prev);
+        if (isSameData(prev, mergedData)) {
           return prev;
         }
-
-        return normalizedRemote;
+        return mergedData;
       });
-    }, 3000);
+    }, 2000);
 
     // Sincroniza quando a aba/app volta ao foco
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        const localState = readLocalData(dataRef.current ?? initialData);
-        const remoteState = await loadRemoteData(localState);
-        if (!isMounted) return;
-
-        const mergedState = mergeAppData(localState, remoteState);
-        const normalizedRemote = normalizeData(mergedState);
-        setData((prev) => {
-          if (isSameData(prev, normalizedRemote)) {
-            return prev;
-          }
-          return normalizedRemote;
-        });
+      if (document.visibilityState === 'visible' && isMounted) {
+        const serverData = await loadServerData();
+        if (serverData) {
+          setData((prev) => {
+            const mergedData = { ...prev, ...serverData, updatedAt: serverData.updatedAt };
+            if (isSameData(prev, mergedData)) {
+              return prev;
+            }
+            return mergedData;
+          });
+        }
       }
     };
 
@@ -248,12 +250,13 @@ export default function App() {
     };
   }, []);
 
+  // Salvar no servidor IMEDIATAMENTE quando dados mudam
   useEffect(() => {
     if (!data) return;
-    const saveCurrentData = async () => {
-      await persistAppData(data);
-    };
-    saveCurrentData();
+    
+    (async () => {
+      await saveToServer(data);
+    })();
   }, [data]);
 
   useEffect(() => {
