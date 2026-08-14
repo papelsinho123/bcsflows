@@ -1,3 +1,5 @@
+export const normalizeUserRole = (role = '') => String(role || '').trim().toLowerCase();
+
 export const findUserByCredentials = (users = [], username = '', password = '') => {
   const safeUsers = Array.isArray(users)
     ? users
@@ -11,6 +13,15 @@ export const findUserByCredentials = (users = [], username = '', password = '') 
   return safeUsers.find((account) => {
     if (!account || typeof account !== 'object') return false;
     const candidateUsername = String(account.usuario || account.username || account.userName || '').trim().toLowerCase();
-    return candidateUsername === normalizedUsername && String(account.password || '').trim() === normalizedPassword;
+    const candidatePassword = String(account.password || '').trim();
+    const matches = candidateUsername === normalizedUsername && candidatePassword === normalizedPassword;
+
+    if (!matches) return false;
+
+    if (account.role) {
+      account.role = normalizeUserRole(account.role);
+    }
+
+    return true;
   });
 };

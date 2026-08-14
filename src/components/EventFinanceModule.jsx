@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { normalizeUserRole } from '../utils/auth.js';
 import { generateFinancePdf } from '../utils/pdfGenerator.js';
 
 function currency(value) {
@@ -34,7 +35,7 @@ export default function EventFinanceModule({ events = [], users = [], config = {
 
   const finances = selectedEvent?.finances || [];
 
-  const canSeeAll = currentUser?.role === 'master';
+  const canSeeAll = normalizeUserRole(currentUser?.role || '') === 'master';
 
   const visibleFinances = useMemo(() => {
     if (canSeeAll) return finances;

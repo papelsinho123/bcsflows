@@ -7,7 +7,7 @@ import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
-import { findUserByCredentials } from './utils/auth.js';
+import { findUserByCredentials, normalizeUserRole } from './utils/auth.js';
 import { isSameData, loadServerData, saveToServer, syncWithServer } from './utils/storage.js';
 import './index.css';
 
@@ -73,12 +73,19 @@ const normalizeData = (stored) => {
 
   try {
     const parsed = source && typeof source === 'object' ? source : JSON.parse(String(source));
+    const normalizedUsers = Array.isArray(parsed.users)
+      ? parsed.users.map((account) => ({
+          ...account,
+          role: normalizeUserRole(account?.role || 'user'),
+        }))
+      : initialData.users;
+
     return {
       ...initialData,
       ...parsed,
       inventory: Array.isArray(parsed.inventory) ? parsed.inventory : initialData.inventory,
       events: Array.isArray(parsed.events) ? parsed.events : initialData.events,
-      users: Array.isArray(parsed.users) ? parsed.users : initialData.users,
+      users: normalizedUsers,
       config: {
         ...initialData.config,
         ...(parsed.config || {}),
@@ -314,13 +321,18 @@ export default function App() {
     const found = findUserByCredentials(safeUsers, usuario, password);
 
     if (found) {
+      const normalizedUser = {
+        ...found,
+        role: normalizeUserRole(found.role || 'user'),
+      };
+
       setError('');
       setShowLogoutVideo(false);
       setShowLoginVideo(true);
       window.setTimeout(() => {
         setShowLoginVideo(false);
         window.setTimeout(() => {
-          setUser(found);
+          setUser(normalizedUser);
         }, 400);
       }, 5000);
       return;
@@ -364,8 +376,9 @@ export default function App() {
   const updateEvents = (events) => setData((prev) => ({ ...prev, events, updatedAt: Date.now() }));
   const updateUsers = (users) => setData((prev) => ({ ...prev, users, updatedAt: Date.now() }));
 
-  const isMaster = user?.role === 'master';
-  const isAdmin = user?.role === 'admin' || isMaster;
+  const currentRole = normalizeUserRole(user?.role || '');
+  const isMaster = currentRole === 'master';
+  const isAdmin = currentRole === 'admin' || isMaster;
   const canAccessSettings = isAdmin;
 
   const visibleNav = [
@@ -396,7 +409,7 @@ export default function App() {
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
             <span className="rounded-3xl bg-white/70 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm">
-              {user?.name} • {user?.role === 'master' ? 'Master' : user?.role === 'admin' ? 'Administrador' : 'Usuário'}
+              {user?.name} • {currentRole === 'master' ? 'Master' : currentRole === 'admin' ? 'Administrador' : 'Usuário'}
             </span>
             <button className="neumorphic-button" onClick={handleLogout}><LogIn className="mr-2 h-4 w-4" />Sair</button>
           </div>

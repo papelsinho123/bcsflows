@@ -5,6 +5,7 @@ import { Pencil, Trash2, CheckCircle2, FileText, MessageCircle, PlusCircle, Chev
 import { generateSeparationPdf, generateEventChecklistPdf, generateMountedItemsPdf } from '../utils/pdfGenerator.js';
 import { validateEventForm } from '../utils/validation.js';
 import { applyScheduledSectorTransfers, getEffectiveConsumptionDate, isTransferActiveOnDate } from '../utils/stockPlanning.js';
+import { normalizeUserRole } from '../utils/auth.js';
 
 const defaultBoardTitles = ['INFORMAÇÕES DO EVENTO', 'MONTAGEM DO EVENTO', 'SEPARAR ITENS PARA O EVENTO', 'HOSPEDAGEM', 'DESLOCAMENTO', 'DESMONTAGEM'];
 
@@ -216,8 +217,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const [sectorEditing, setSectorEditing] = useState(null);
   const [sectorEditDrafts, setSectorEditDrafts] = useState({});
 
-  const canManageEvents = user?.role === 'master' || user?.role === 'admin';
-  const canTransferItems = user?.role === 'master' || user?.role === 'admin';
+  const currentUserRole = normalizeUserRole(user?.role || '');
+  const canManageEvents = currentUserRole === 'master' || currentUserRole === 'admin';
+  const canTransferItems = currentUserRole === 'master' || currentUserRole === 'admin';
 
   const safeEvents = Array.isArray(events) ? events : [];
   const visibleEventList = canManageEvents
@@ -277,7 +279,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const findInventoryItem = (id) => inventory.find((item) => String(item.id) === String(id)) || null;
 
   const createEvent = () => {
-    if (!(user?.role === 'master' || user?.role === 'admin')) return;
+    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
 
     const errors = validateEventForm(form, newEventUserAssignments);
     setFormErrors(errors);
@@ -636,7 +638,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const completeEvent = (event) => {
-    if (!(user?.role === 'master' || user?.role === 'admin')) return;
+    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
 
     const updated = { ...event, status: 'Concluído' };
     if (event.boards?.montagem?.length) {
@@ -646,7 +648,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const reopenEvent = (event) => {
-    if (!(user?.role === 'master' || user?.role === 'admin')) return;
+    if (!(normalizeUserRole(user?.role || '') === 'master' || normalizeUserRole(user?.role || '') === 'admin')) return;
     updateEvent({ ...event, status: 'A Iniciar' });
   };
 

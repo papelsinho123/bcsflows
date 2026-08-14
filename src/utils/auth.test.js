@@ -25,6 +25,19 @@ describe('findUserByCredentials', () => {
     expect(findUserByCredentials({ users: null }, 'andersonsiebre', 'anderson1')).toBeUndefined();
   });
 
+  it('normalizes mixed-case roles so master/admin permissions are not lost', () => {
+    const users = [
+      { id: 1, usuario: 'andersonsiebre', password: 'anderson1', role: 'MASTER', name: 'Anderson Siebre' },
+      { id: 2, usuario: 'admin', password: 'admin', role: 'Admin', name: 'Administrador' },
+    ];
+
+    const master = findUserByCredentials(users, 'andersonsiebre', 'anderson1');
+    const admin = findUserByCredentials(users, 'admin', 'admin');
+
+    expect(master?.role).toBe('master');
+    expect(admin?.role).toBe('admin');
+  });
+
   it('maps the database bootstrap to login columns expected by the app', () => {
     const sql = fs.readFileSync(new URL('../../create_usuarios.sql', import.meta.url), 'utf8');
 

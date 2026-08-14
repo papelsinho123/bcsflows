@@ -151,7 +151,8 @@ export function generateProfessionalSchedulePdf(user, assignments, month) {
 
   doc.setFontSize(12);
   addLine(`Profissional: ${user.name}`);
-  addLine(`Cargo: ${user.role === 'admin' ? 'Administrador' : user.role === 'master' ? 'Master' : 'Usuário'}`);
+  const normalizedRole = String(user.role || '').trim().toLowerCase();
+  addLine(`Cargo: ${normalizedRole === 'admin' ? 'Administrador' : normalizedRole === 'master' ? 'Master' : 'Usuário'}`);
   addLine(`Período: ${monthLabel}`);
   y += lineHeight;
 
@@ -214,7 +215,8 @@ export function generateProfessionalSchedulesPdf(users, rows, month) {
       const user = row.user;
       if (!user) return;
 
-      addLine(`${rowIndex + 1}. ${user.name} (${user.role === 'admin' ? 'Administrador' : user.role === 'master' ? 'Master' : 'Usuário'})`, 0);
+      const normalizedRole = String(user.role || '').trim().toLowerCase();
+      addLine(`${rowIndex + 1}. ${user.name} (${normalizedRole === 'admin' ? 'Administrador' : normalizedRole === 'master' ? 'Master' : 'Usuário'})`, 0);
       addLine(`   Total de dias: ${row.totalDays}`, 0);
       if (row.assignments.length === 0) {
         addLine('   Sem eventos atribuídos', 0);

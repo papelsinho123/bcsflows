@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, Calendar, Box, ArrowRight, Users, FileText, MessageCircle, ChevronDown, ChevronUp, Truck } from 'lucide-react';
+import { normalizeUserRole } from '../utils/auth.js';
 import { generateProfessionalSchedulesPdf, generateExternalRentalsPdf } from '../utils/pdfGenerator.js';
 
 function toDate(value) {
@@ -381,7 +382,8 @@ export default function DashboardModule({ events, inventory, users, config, onUs
     };
   }, [events, eventRangeMap]);
 
-  const canManageLeave = currentUser?.role === 'master' || currentUser?.role === 'admin';
+  const currentUserRole = normalizeUserRole(currentUser?.role || '');
+  const canManageLeave = currentUserRole === 'master' || currentUserRole === 'admin';
 
   const transferDashboard = useMemo(() => {
     const transfers = new Map();
@@ -511,7 +513,7 @@ export default function DashboardModule({ events, inventory, users, config, onUs
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="font-semibold text-slate-900">{row.user.name}</div>
-                        <div className="text-xs text-slate-500">{row.user.role === 'admin' ? 'Administrador' : 'Usuário'}</div>
+                        <div className="text-xs text-slate-500">{normalizeUserRole(row.user.role || '') === 'admin' ? 'Administrador' : 'Usuário'}</div>
                       </div>
                       <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                         {row.totalDays} dias no mês
@@ -621,7 +623,7 @@ export default function DashboardModule({ events, inventory, users, config, onUs
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <div className="leave-user-name font-semibold text-slate-900">{row.user.name}</div>
-                        <div className="leave-role text-[11px] uppercase tracking-[0.12em] text-slate-500">{row.user.role === 'admin' ? 'Administrador' : 'Usuário'}</div>
+                        <div className="leave-role text-[11px] uppercase tracking-[0.12em] text-slate-500">{normalizeUserRole(row.user.role || '') === 'admin' ? 'Administrador' : 'Usuário'}</div>
                       </div>
                       <span className="leave-balance-badge rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-800">Saldo {row.balance}</span>
                     </div>
