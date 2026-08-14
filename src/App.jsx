@@ -279,9 +279,9 @@ export default function App() {
     }, 5000);
   };
 
-  const loginBackgroundVideo = assetUrl('brand-video.mp4');
-  const introLoginVideo = assetUrl('remova_os_botões_e_o_quadro_f.mp4');
-  const introLogoutVideo = assetUrl('transforme_essa_imagem_em_um_g.mp4');
+  const loginBackgroundVideo = assetUrl('background-video.mp4');
+  const introLoginVideo = assetUrl('login-intro.mp4');
+  const introLogoutVideo = assetUrl('logout-intro.mp4');
   const formattedLoginDate = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
     day: 'numeric',

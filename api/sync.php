@@ -5,7 +5,7 @@ require_once __DIR__ . '/db.php';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-    $sql = 'SELECT payload FROM app_data ORDER BY id DESC LIMIT 1';
+    $sql = 'SELECT payload FROM app_data WHERE id = 1 LIMIT 1';
     $result = $conn->query($sql);
     $row = $result && $result->num_rows > 0 ? $result->fetch_assoc() : null;
 
@@ -15,7 +15,8 @@ if ($method === 'GET') {
         exit;
     }
 
-    echo json_encode(['payload' => json_decode($row['payload'], true)]);
+    $decoded = json_decode($row['payload'], true);
+    echo json_encode(['payload' => $decoded ?: null]);
     $conn->close();
     exit;
 }
@@ -38,7 +39,7 @@ if (!is_array($data)) {
 
 $payload = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-$stmt = $conn->prepare('INSERT INTO app_data (payload, updated_at) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()');
+$stmt = $conn->prepare('INSERT INTO app_data (id, payload, updated_at) VALUES (1, ?, NOW()) ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()');
 $stmt->bind_param('s', $payload);
 $ok = $stmt->execute();
 
