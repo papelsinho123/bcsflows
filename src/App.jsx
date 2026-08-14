@@ -7,6 +7,7 @@ import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
+import { loadRemoteData, persistAppData, readLocalData } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
@@ -64,9 +65,11 @@ const initialData = {
 const STORAGE_KEY = 'bcs_flows_data_v1';
 
 const normalizeData = (stored) => {
-  if (!stored) return initialData;
+  const source = typeof stored === 'string' ? JSON.parse(stored) : stored;
+  if (!source) return initialData;
+
   try {
-    const parsed = JSON.parse(stored);
+    const parsed = source && typeof source === 'object' ? source : JSON.parse(String(source));
     return {
       ...initialData,
       ...parsed,
@@ -163,7 +166,7 @@ function BCSGlassLogo({ className = '' }) {
 }
 
 export default function App() {
-  const [data, setData] = useState(() => normalizeData(localStorage.getItem(STORAGE_KEY)));
+  const [data, setData] = useState(initialData);
   const [user, setUser] = useState(null);
   const [route, setRoute] = useState('events');
   const [eventBoardResetKey, setEventBoardResetKey] = useState(0);
@@ -176,7 +179,24 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    let isMounted = true;
+
+    const hydrateData = async () => {
+      const persisted = await loadRemoteData(readLocalData(initialData));
+      if (isMounted) {
+        setData(normalizeData(persisted));
+      }
+    };
+
+    hydrateData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    persistAppData(data);
   }, [data]);
 
   useEffect(() => {
@@ -189,14 +209,33 @@ export default function App() {
     const loadMotivationalPhrase = async () => {
       try {
         const response = await fetch('/frases_motivacionais.csv');
-        if (!response.ok) return;
+        if (!response.ok) {
+          const fallbackRows = [
+            { frase: 'Comece hoje, não amanhã.', autor: 'BCS Flows' },
+            { frase: 'A persistência é o caminho do êxito.', autor: 'Charles Chaplin' },
+          ];
+          setMotivationalPhrase(getDailyPhrase(fallbackRows, new Date()));
+          return;
+        }
+
         const csvText = await response.text();
         const rows = parseCsvRows(csvText);
-        if (rows.length === 0) return;
+        if (rows.length === 0) {
+          const fallbackRows = [
+            { frase: 'Comece hoje, não amanhã.', autor: 'BCS Flows' },
+            { frase: 'A persistência é o caminho do êxito.', autor: 'Charles Chaplin' },
+          ];
+          setMotivationalPhrase(getDailyPhrase(fallbackRows, new Date()));
+          return;
+        }
 
         setMotivationalPhrase(getDailyPhrase(rows, new Date()));
       } catch (error) {
         console.error('Erro ao carregar frase motivacional:', error);
+        setMotivationalPhrase({
+          frase: 'Comece hoje, não amanhã.',
+          autor: 'BCS Flows',
+        });
       }
     };
 
@@ -239,7 +278,9 @@ export default function App() {
     }, 5000);
   };
 
-  const loginBackgroundVideo = '/remova_os_botões_e_o_quadro_f.mp4';
+  const loginBackgroundVideo = '/brand-video.mp4';
+  const introLoginVideo = '/remova_os_botões_e_o_quadro_f.mp4';
+  const introLogoutVideo = '/transforme_essa_imagem_em_um_g.mp4';
   const formattedLoginDate = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -369,7 +410,7 @@ export default function App() {
             <video
               key={showLoginVideo ? 'login-intro-video' : 'logout-intro-video'}
               className="h-full w-full object-cover scale-110"
-              src="/transforme_essa_imagem_em_um_g.mp4"
+              src={showLoginVideo ? introLoginVideo : introLogoutVideo}
               autoPlay
               muted
               playsInline
