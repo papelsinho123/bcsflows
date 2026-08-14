@@ -20,6 +20,11 @@ describe('findUserByCredentials', () => {
     expect(findUserByCredentials(users, 'andersonsiebre@bcs.com', 'anderson1')).toBeUndefined();
   });
 
+  it('does not crash when the user payload is malformed', () => {
+    expect(() => findUserByCredentials({ users: null }, 'andersonsiebre', 'anderson1')).not.toThrow();
+    expect(findUserByCredentials({ users: null }, 'andersonsiebre', 'anderson1')).toBeUndefined();
+  });
+
   it('maps the database bootstrap to login columns expected by the app', () => {
     const sql = fs.readFileSync(new URL('../../create_usuarios.sql', import.meta.url), 'utf8');
 

@@ -310,7 +310,9 @@ export default function App() {
   const handleLogin = () => {
     const usuario = loginForm.usuario.trim();
     const password = loginForm.password.trim();
-    const found = findUserByCredentials(data.users, usuario, password);
+    const safeUsers = Array.isArray(data?.users) ? data.users : initialData.users;
+    const found = findUserByCredentials(safeUsers, usuario, password);
+
     if (found) {
       setError('');
       setShowLogoutVideo(false);
@@ -323,6 +325,7 @@ export default function App() {
       }, 5000);
       return;
     }
+
     setError('Usuário ou senha incorretos.');
   };
 
