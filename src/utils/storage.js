@@ -5,6 +5,11 @@ const getApiBase = () => {
   return import.meta.env.VITE_API_BASE || fromWindow || '/bcsflows/api';
 };
 
+const withTimestamp = (data) => ({
+  ...(data && typeof data === 'object' ? data : {}),
+  updatedAt: Number(data?.updatedAt || Date.now()),
+});
+
 export const readLocalData = (fallback) => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -18,13 +23,32 @@ export const readLocalData = (fallback) => {
 
 export const writeLocalData = (data) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const snapshot = withTimestamp(data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
   } catch (error) {
     // ignore storage errors in restricted environments
   }
 };
 
 export const isSameData = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
+export const mergeAppData = (localData, remoteData) => {
+  const localState = localData && typeof localData === 'object' ? localData : {};
+  const remoteState = remoteData && typeof remoteData === 'object' ? remoteData : {};
+
+  const localStamp = Number(localState.updatedAt || 0);
+  const remoteStamp = Number(remoteState.updatedAt || 0);
+
+  if (!localStamp && !remoteStamp) {
+    return { ...localState, ...remoteState };
+  }
+
+  if (!remoteStamp || remoteStamp <= localStamp) {
+    return { ...localState, ...remoteState, updatedAt: localStamp || remoteStamp || Date.now() };
+  }
+
+  return { ...localState, ...remoteState, updatedAt: remoteStamp };
+};
 
 export const loadRemoteData = async (fallback) => {
   const base = getApiBase();
@@ -36,17 +60,18 @@ export const loadRemoteData = async (fallback) => {
     });
 
     if (!response.ok) {
-      return readLocalData(fallback);
+      return mergeAppData(readLocalData(fallback), null);
     }
 
     const payload = await response.json();
-    if (!payload || typeof payload !== 'object') {
-      return readLocalData(fallback);
+    const remotePayload = payload && typeof payload === 'object' ? (payload.payload ?? payload) : null;
+    if (!remotePayload || typeof remotePayload !== 'object') {
+      return mergeAppData(readLocalData(fallback), null);
     }
 
-    return payload.payload ?? payload;
+    return mergeAppData(readLocalData(fallback), remotePayload);
   } catch (error) {
-    return readLocalData(fallback);
+    return mergeAppData(readLocalData(fallback), null);
   }
 };
 
@@ -54,10 +79,11 @@ export const saveRemoteData = async (data) => {
   const base = getApiBase();
 
   try {
+    const snapshot = withTimestamp(data);
     const response = await fetch(`${base}/sync.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: JSON.stringify(snapshot),
     });
 
     if (!response.ok) {
@@ -69,6 +95,8 @@ export const saveRemoteData = async (data) => {
 };
 
 export const persistAppData = async (data) => {
-  writeLocalData(data);
-  await saveRemoteData(data);
+  const snapshot = withTimestamp(data);
+  writeLocalData(snapshot);
+  await saveRemoteData(snapshot);
+  return snapshot;
 };

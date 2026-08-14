@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText } from 'lucide-react';
 import InventoryModule from './components/InventoryModule.jsx';
 import SettingsModule from './components/SettingsModule.jsx';
@@ -8,10 +8,11 @@ import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
 import { findUserByCredentials } from './utils/auth.js';
-import { isSameData, loadRemoteData, persistAppData, readLocalData } from './utils/storage.js';
+import { isSameData, loadRemoteData, mergeAppData, persistAppData, readLocalData } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
+  updatedAt: Date.now(),
   users: [
     { id: 1, usuario: 'andersonsiebre', username: 'andersonsiebre', email: 'andersonsiebre@bcs.com', password: 'anderson1', role: 'master', name: 'Anderson Siebre', leaveTaken: 0, leaveRuleDays: 7 },
     { id: 2, usuario: 'admin', username: 'admin', email: 'admin@bcs.com', password: 'admin', role: 'admin', name: 'Administrador BCS', leaveTaken: 0, leaveRuleDays: 7 },
@@ -179,6 +180,11 @@ export default function App() {
   const [showLoginVideo, setShowLoginVideo] = useState(false);
   const [showLogoutVideo, setShowLogoutVideo] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const dataRef = useRef(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,17 +195,20 @@ export default function App() {
       const remoteState = await loadRemoteData(localState);
       if (!isMounted) return;
 
-      const nextState = normalizeData(remoteState && typeof remoteState === 'object' ? remoteState : localState);
+      const mergedState = mergeAppData(localState, remoteState);
+      const nextState = normalizeData(mergedState && typeof mergedState === 'object' ? mergedState : localState);
       setData(nextState);
     };
 
     hydrateData();
 
     syncInterval = window.setInterval(async () => {
-      const remoteState = await loadRemoteData(readLocalData(data));
+      const localState = readLocalData(dataRef.current ?? initialData);
+      const remoteState = await loadRemoteData(localState);
       if (!isMounted) return;
 
-      const normalizedRemote = normalizeData(remoteState);
+      const mergedState = mergeAppData(localState, remoteState);
+      const normalizedRemote = normalizeData(mergedState);
       setData((prev) => {
         if (isSameData(prev, normalizedRemote)) {
           return prev;
@@ -219,7 +228,10 @@ export default function App() {
 
   useEffect(() => {
     if (!data) return;
-    persistAppData(data);
+    const saveCurrentData = async () => {
+      await persistAppData(data);
+    };
+    saveCurrentData();
   }, [data]);
 
   useEffect(() => {
@@ -319,10 +331,10 @@ export default function App() {
     minute: '2-digit',
   }).format(currentDate);
 
-  const updateInventory = (inventory) => setData((prev) => ({ ...prev, inventory }));
-  const updateConfig = (config) => setData((prev) => ({ ...prev, config }));
-  const updateEvents = (events) => setData((prev) => ({ ...prev, events }));
-  const updateUsers = (users) => setData((prev) => ({ ...prev, users }));
+  const updateInventory = (inventory) => setData((prev) => ({ ...prev, inventory, updatedAt: Date.now() }));
+  const updateConfig = (config) => setData((prev) => ({ ...prev, config, updatedAt: Date.now() }));
+  const updateEvents = (events) => setData((prev) => ({ ...prev, events, updatedAt: Date.now() }));
+  const updateUsers = (users) => setData((prev) => ({ ...prev, users, updatedAt: Date.now() }));
 
   const isMaster = user?.role === 'master';
   const isAdmin = user?.role === 'admin' || isMaster;
