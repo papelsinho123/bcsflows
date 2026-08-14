@@ -3,7 +3,7 @@ export const findUserByCredentials = (users = [], username = '', password = '') 
   const normalizedPassword = String(password || '').trim();
 
   return users.find((account) => {
-    const candidateUsername = String(account.username || account.userName || account.email || '').trim().toLowerCase();
+    const candidateUsername = String(account.usuario || account.username || account.userName || '').trim().toLowerCase();
     return candidateUsername === normalizedUsername && String(account.password || '').trim() === normalizedPassword;
   });
 };

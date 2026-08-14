@@ -64,7 +64,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
   const [typeEditDraft, setTypeEditDraft] = useState('');
   const [editingProposal, setEditingProposal] = useState(null);
   const [proposalEditDraft, setProposalEditDraft] = useState({ name: '', type: '' });
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'user', phone: '' });
+  const [newUser, setNewUser] = useState({ name: '', usuario: '', email: '', password: '', role: 'user', phone: '' });
   const [settingsAlerts, setSettingsAlerts] = useState([]);
   const [newExpenseType, setNewExpenseType] = useState('');
   const [newPaymentType, setNewPaymentType] = useState('');
@@ -187,24 +187,27 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
   });
 
   const addUser = () => {
+    const usuario = newUser.usuario.trim();
     const email = newUser.email.trim().toLowerCase();
-    if (!newUser.name || !email || !newUser.password) {
-      setSettingsAlerts([{ field: 'newUser', message: 'Preencha nome, e-mail e senha para criar o usuário.' }]);
+    if (!newUser.name || !usuario || !newUser.password) {
+      setSettingsAlerts([{ field: 'newUser', message: 'Preencha nome, usuário e senha para criar o usuário.' }]);
       return;
     }
-    if (users.some((user) => user.email === email)) {
-      setSettingsAlerts([{ field: 'newUser', message: 'Já existe um usuário com esse e-mail.' }]);
+    if (users.some((user) => (user.usuario || user.username || user.userName || '').trim().toLowerCase() === usuario.toLowerCase())) {
+      setSettingsAlerts([{ field: 'newUser', message: 'Já existe um usuário com esse nome de usuário.' }]);
       return;
     }
     setSettingsAlerts([]);
     const nextUser = {
       ...newUser,
       id: Date.now(),
+      usuario,
+      username: usuario,
       email,
       phone: formatWhatsappMask(newUser.phone),
     };
     onUpdateUsers([...users, nextUser]);
-    setNewUser({ name: '', email: '', password: '', role: 'user', phone: '' });
+    setNewUser({ name: '', usuario: '', email: '', password: '', role: 'user', phone: '' });
   };
 
   const removeUser = (id) => {
@@ -421,11 +424,13 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
               {canCreateUsers ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <input className="neumorphic-input" placeholder="Nome" value={newUser.name} onChange={(e) => handleUserChange('name', e.target.value)} />
+                  <input className="neumorphic-input" placeholder="Usuário" value={newUser.usuario} onChange={(e) => handleUserChange('usuario', e.target.value)} />
                   <input className="neumorphic-input" placeholder="E-mail" value={newUser.email} onChange={(e) => handleUserChange('email', e.target.value)} />
                   <input type="password" className="neumorphic-input" placeholder="Senha" value={newUser.password} onChange={(e) => handleUserChange('password', e.target.value)} />
                   <select className="neumorphic-select" value={newUser.role} onChange={(e) => handleUserChange('role', e.target.value)}>
                     <option value="user">Usuário</option>
                     <option value="admin">Administrador</option>
+                    <option value="master">Master</option>
                   </select>
                   <input className="neumorphic-input" placeholder="WhatsApp" value={newUser.phone} onChange={(e) => handleUserChange('phone', formatWhatsappMask(e.target.value))} />
                   <button className="neumorphic-button primary" onClick={addUser}>Criar usuário</button>

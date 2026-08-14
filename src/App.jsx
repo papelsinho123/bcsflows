@@ -13,9 +13,9 @@ import './index.css';
 
 const initialData = {
   users: [
-    { id: 1, username: 'andersonsiebre', email: 'andersonsiebre@bcs.com', password: 'anderson1', role: 'master', name: 'Anderson Siebre', leaveTaken: 0, leaveRuleDays: 7 },
-    { id: 2, username: 'admin', email: 'admin@bcs.com', password: 'admin', role: 'admin', name: 'Administrador BCS', leaveTaken: 0, leaveRuleDays: 7 },
-    { id: 3, username: 'user', email: 'user@bcs.com', password: 'user', role: 'user', name: 'Usuário Padrão', leaveTaken: 0, leaveRuleDays: 7 },
+    { id: 1, usuario: 'andersonsiebre', username: 'andersonsiebre', email: 'andersonsiebre@bcs.com', password: 'anderson1', role: 'master', name: 'Anderson Siebre', leaveTaken: 0, leaveRuleDays: 7 },
+    { id: 2, usuario: 'admin', username: 'admin', email: 'admin@bcs.com', password: 'admin', role: 'admin', name: 'Administrador BCS', leaveTaken: 0, leaveRuleDays: 7 },
+    { id: 3, usuario: 'user', username: 'user', email: 'user@bcs.com', password: 'user', role: 'user', name: 'Usuário Padrão', leaveTaken: 0, leaveRuleDays: 7 },
   ],
   inventory: [
     { id: 1, type: 'IMPRESSORA TÉRMICA', name: 'Zebra TLP 2824', serial: 'ZBR-1234', quantity: 6, status: 'Disponível' },
@@ -172,7 +172,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [route, setRoute] = useState('events');
   const [eventBoardResetKey, setEventBoardResetKey] = useState(0);
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginForm, setLoginForm] = useState({ usuario: '', password: '' });
   const [error, setError] = useState('');
   const [theme, setTheme] = useState(() => localStorage.getItem('bcs_flows_theme') || 'light');
   const [motivationalPhrase, setMotivationalPhrase] = useState({ frase: '', autor: 'BCS Flows' });
@@ -271,9 +271,9 @@ export default function App() {
   }, []);
 
   const handleLogin = () => {
-    const username = loginForm.username.trim();
+    const usuario = loginForm.usuario.trim();
     const password = loginForm.password.trim();
-    const found = findUserByCredentials(data.users, username, password);
+    const found = findUserByCredentials(data.users, usuario, password);
     if (found) {
       setError('');
       setShowLogoutVideo(false);
@@ -295,7 +295,7 @@ export default function App() {
     window.setTimeout(() => {
       setUser(null);
       setRoute('events');
-      setLoginForm({ username: '', password: '' });
+      setLoginForm({ usuario: '', password: '' });
       setError('');
       setShowLogoutVideo(false);
     }, 5000);
@@ -489,7 +489,7 @@ export default function App() {
 
               <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10 z-10">
                 <div className="space-y-3">
-                  <input className="neumorphic-input w-full border-white/10 bg-white/12 text-slate-900 placeholder:text-slate-400" placeholder="Usuário" value={loginForm.username} onChange={(e) => setLoginForm((prev) => ({ ...prev, username: e.target.value }))} />
+                  <input className="neumorphic-input w-full border-white/10 bg-white/12 text-slate-900 placeholder:text-slate-400" placeholder="Usuário" value={loginForm.usuario} onChange={(e) => setLoginForm((prev) => ({ ...prev, usuario: e.target.value }))} />
                   <input type="password" className="neumorphic-input w-full border-white/10 bg-white/12 text-slate-900 placeholder:text-slate-400" placeholder="Senha" value={loginForm.password} onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))} />
                 </div>
                 {error && <div className="mt-3 rounded-3xl border border-rose-200/40 bg-rose-500/15 p-3 text-sm text-rose-100 backdrop-blur-sm">{error}</div>}
