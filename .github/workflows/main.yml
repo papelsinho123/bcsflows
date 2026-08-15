@@ -53,4 +53,5 @@ jobs:
           protocol: ftp
           local-dir: ./deploy/
           server-dir: public_html/bcsflows/
+          dangerous-clean-slate: true
           git-ftp-args: --insecure
