@@ -258,6 +258,115 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return getEventTransferDateRange(targetEvent);
   }, [events, transferForm.targetEventId]);
 
+  function renderEventSelector() {
+    return (
+      <div className="space-y-6">
+        <NeumorphicCard>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold">Seleção de Evento</h2>
+              <p className="text-sm text-slate-500">Escolha o evento para visualizar o quadro completo.</p>
+            </div>
+            {canManageEvents && (
+              <div className="flex flex-wrap gap-3">
+                <button className="neumorphic-button" onClick={() => setShowEventForm((prev) => !prev)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />{showEventForm ? 'Fechar' : 'Novo Evento'}
+                </button>
+                <button className="neumorphic-button" onClick={() => fileInputRef.current?.click()}>
+                  <FileText className="mr-2 h-4 w-4" />Importar XLSX
+                </button>
+                <input type="file" accept=".xlsx,.xls" ref={fileInputRef} className="hidden" onChange={handleXlsxUpload} />
+              </div>
+            )}
+          </div>
+          {!canManageEvents && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Sem permissão para criar ou gerenciar eventos.
+            </div>
+          )}
+          {canManageEvents && visibleEventList.length === 0 && !showEventForm && (
+            <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+              <div className="font-semibold">Nenhum evento cadastrado.</div>
+              <div className="mt-2">Clique em “Novo Evento” para criar o primeiro evento.</div>
+            </div>
+          )}
+          {importStatus && (
+            <div className="mt-3 rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-700 shadow-sm">
+              {importStatus}
+            </div>
+          )}
+          {importErrors.length > 0 && (
+            <div className="mt-3 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-sm">
+              {importErrors.map((error, index) => (
+                <div key={index}>{error}</div>
+              ))}
+            </div>
+          )}
+          {showEventForm && (
+            <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-800">{editingEventId ? 'Editar evento' : 'Criar novo evento'}</h3>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Nome</span>
+                  <input className="neumorphic-input w-full" value={form.name} onChange={(e) => handleForm('name', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Cliente</span>
+                  <input className="neumorphic-input w-full" value={form.clientName} onChange={(e) => handleForm('clientName', e.target.value)} />
+                </label>
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-sm font-medium text-slate-700">Endereço</span>
+                  <input className="neumorphic-input w-full" value={form.address} onChange={(e) => handleForm('address', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Local</span>
+                  <input className="neumorphic-input w-full" value={form.locationName} onChange={(e) => handleForm('locationName', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Contato</span>
+                  <input className="neumorphic-input w-full" value={form.contact} onChange={(e) => handleForm('contact', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data de saída</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.departureDate} onChange={(e) => handleForm('departureDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data do evento</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.startDate || form.departureDate} onChange={(e) => handleForm('startDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data de retorno</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.returnDate || form.endDate} onChange={(e) => handleForm('returnDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Tamanho do rótulo</span>
+                  <input className="neumorphic-input w-full" value={form.labelSize} onChange={(e) => handleForm('labelSize', e.target.value)} />
+                </label>
+              </div>
+              {formErrors.length > 0 && (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                  {formErrors.map((error) => (
+                    <div key={error.field}>{error.message}</div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button className="neumorphic-button primary" onClick={createEvent}>{editingEventId ? 'Salvar alterações' : 'Criar evento'}</button>
+                <button className="neumorphic-button outline" onClick={() => {
+                  setShowEventForm(false);
+                  setForm(getDefaultEventForm());
+                  setFormErrors([]);
+                }}>Cancelar</button>
+              </div>
+            </div>
+          )}
+        </NeumorphicCard>
+      </div>
+    );
+  }
+
   if (!selectedEvent) {
     return renderEventSelector();
   }
@@ -1862,350 +1971,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return messages;
   }, [events, inventory]);
 
-  const renderEventSelector = () => (
-    <div className="space-y-6">
-      <NeumorphicCard>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">Seleção de Evento</h2>
-            <p className="text-sm text-slate-500">Escolha o evento para visualizar o quadro completo.</p>
-          </div>
-          {canManageEvents && (
-            <div className="flex flex-wrap gap-3">
-              <button className="neumorphic-button" onClick={() => setShowEventForm((prev) => !prev)}>
-                <PlusCircle className="mr-2 h-4 w-4" />{showEventForm ? 'Fechar' : 'Novo Evento'}
-              </button>
-              <button className="neumorphic-button" onClick={() => fileInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" />Importar XLSX
-              </button>
-              <input type="file" accept=".xlsx,.xls" ref={fileInputRef} className="hidden" onChange={handleXlsxUpload} />
-            </div>
-          )}
-        </div>
-        {!canManageEvents && (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Sem permissão para criar ou gerenciar eventos.
-          </div>
-        )}
-        {canManageEvents && visibleEvents.length === 0 && !showEventForm && (
-          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
-            <div className="font-semibold">Nenhum evento cadastrado.</div>
-            <div className="mt-2">Clique em “Novo Evento” para criar o primeiro evento.</div>
-          </div>
-        )}
-        {importStatus && (
-          <div className="mt-3 rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-700 shadow-sm">
-            {importStatus}
-            {importErrors.length > 0 && (
-              <div className="mt-2 text-rose-700">
-                {importErrors.map((error, index) => <div key={index}>{error}</div>)}
-              </div>
-            )}
-          </div>
-        )}
-
-        {lastSavedError && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-amber-800">
-            <div className="font-medium">Erro recente capturado ao renderizar o painel</div>
-            <div className="text-xs mt-2">Detalhes:</div>
-            <pre className="mt-2 text-xs whitespace-pre-wrap bg-white p-2 rounded text-rose-700">{lastSavedError.stack || lastSavedError.error}</pre>
-          </div>
-        )}
-
-        {showEventForm && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <input className="neumorphic-input w-full" placeholder="Nome do Evento" value={form.name} onChange={(e) => handleForm('name', e.target.value)} />
-              {formErrors.find((error) => error.field === 'name') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'name').message}</p>}
-            </div>
-            <input className="neumorphic-input w-full" placeholder="Endereço Completo" value={form.address} onChange={(e) => handleForm('address', e.target.value)} />
-            <input className="neumorphic-input w-full" placeholder="Nome do Local" value={form.locationName} onChange={(e) => handleForm('locationName', e.target.value)} />
-            <div className="space-y-2">
-              <input className="neumorphic-input w-full" placeholder="Nome do Cliente" value={form.clientName} onChange={(e) => handleForm('clientName', e.target.value)} />
-              {formErrors.find((error) => error.field === 'clientName') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'clientName').message}</p>}
-            </div>
-            <input className="neumorphic-input w-full" placeholder="Responsável" value={form.organizerName} onChange={(e) => handleForm('organizerName', e.target.value)} />
-            <div className="space-y-2">
-              <input className="neumorphic-input w-full" placeholder="Contato do Cliente" value={form.contact} onChange={(e) => handleForm('contact', formatWhatsappMask(e.target.value))} />
-              {formErrors.find((error) => error.field === 'contact') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'contact').message}</p>}
-            </div>
-            <div className="space-y-3 rounded-3xl border border-slate-200/80 bg-white/60 p-4 shadow-[0_10px_30px_rgba(148,163,184,0.12)] sm:col-span-2 lg:col-span-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Datas do evento</h3>
-                <div className="h-px flex-1 bg-slate-200/80" />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data de Partida</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.departureDate} onChange={(e) => handleForm('departureDate', e.target.value)} />
-                  {formErrors.find((error) => error.field === 'departureDate') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'departureDate').message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data de Montagem CAEX</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.caexMontageDate} onChange={(e) => handleForm('caexMontageDate', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data de Montagem Secretaria</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.secretariaMontageDate} onChange={(e) => handleForm('secretariaMontageDate', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data de Início do Evento</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.startDate} onChange={(e) => handleForm('startDate', e.target.value)} />
-                  {formErrors.find((error) => error.field === 'startDate') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'startDate').message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data do Fim do Evento</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.endDate} onChange={(e) => handleForm('endDate', e.target.value)} />
-                  {formErrors.find((error) => error.field === 'endDate') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'endDate').message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Data de Retorno</label>
-                  <input type="date" className="neumorphic-input w-full" value={form.returnDate} onChange={(e) => handleForm('returnDate', e.target.value)} />
-                  {formErrors.find((error) => error.field === 'returnDate') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'returnDate').message}</p>}
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Tamanho da Etiqueta</label>
-              <select className="neumorphic-select w-full" value={form.labelSize} onChange={(e) => handleForm('labelSize', e.target.value)}>
-                <option value="9X5">9X5</option>
-                <option value="8,5X3,5">8,5X3,5</option>
-                <option value="DO CLIENTE">DO CLIENTE</option>
-                <option value="A4">A4</option>
-                <option value="NÃO UTILIZADO">NÃO UTILIZADO</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Link do ambiente</label>
-              <input className="neumorphic-input w-full" placeholder="https://sigevent.pro/bcs/" value={form.environmentLink} onChange={(e) => handleForm('environmentLink', e.target.value)} />
-            </div>
-            <div className="space-y-2 sm:col-span-2 lg:col-span-2">
-              <label className="text-sm font-semibold">Envolvidos no evento</label>
-              <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Profissional</label>
-                  <select className="neumorphic-select w-full" value={selectedEventUserId} onChange={(e) => setSelectedEventUserId(e.target.value)}>
-                    <option value="">Selecione um usuário</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                    ))}
-                  </select>
-                </div>
-                {selectedEventUserId ? (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Data de partida do profissional</label>
-                      <input
-                        type="date"
-                        className="neumorphic-input w-full"
-                        value={selectedEventUserDepartureDate || form.departureDate || form.startDate || ''}
-                        onChange={(e) => setSelectedEventUserDepartureDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Data de retorno do profissional</label>
-                      <input
-                        type="date"
-                        className="neumorphic-input w-full"
-                        value={selectedEventUserReturnDate || form.returnDate || form.endDate || ''}
-                        onChange={(e) => setSelectedEventUserReturnDate(e.target.value)}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-2 col-span-full text-xs text-slate-500">
-                    Selecione um profissional para preencher as datas de partida e retorno.
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="neumorphic-button"
-                  onClick={() => {
-                    const userId = Number(selectedEventUserId);
-                    if (!userId || newEventUsers.includes(userId)) return;
-
-                    const nextAssignment = {
-                      userId,
-                      departureDate: selectedEventUserDepartureDate || form.departureDate || form.startDate || '',
-                      returnDate: selectedEventUserReturnDate || form.returnDate || form.endDate || '',
-                    };
-
-                    setNewEventUsers((prev) => [...prev, userId]);
-                    setNewEventUserAssignments((prev) => [...prev, nextAssignment]);
-                    setSelectedEventUserId('');
-                    setSelectedEventUserDepartureDate('');
-                    setSelectedEventUserReturnDate('');
-                  }}
-                >Adicionar</button>
-              </div>
-              <div className="space-y-2 mt-2">
-                {formErrors.find((error) => error.field === 'users') && <p className="text-sm text-rose-600">{formErrors.find((error) => error.field === 'users').message}</p>}
-                {newEventUsers.length === 0 && <div className="text-xs text-slate-500">Nenhum usuário adicionado.</div>}
-                {newEventUsers.map((userId) => {
-                  const member = users.find((u) => u.id === userId);
-                  const assignment = newEventUserAssignments.find((item) => item.userId === userId);
-                  return member ? (
-                    <div key={userId} className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-3xl bg-white/70 shadow-sm">
-                      <span>{member.name} ({member.email})</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">Ida:</span>
-                        <input
-                          type="date"
-                          className="neumorphic-input text-xs"
-                          value={assignment?.departureDate || assignment?.startDate || ''}
-                          onChange={(e) => {
-                            setNewEventUserAssignments((prev) => {
-                              const existingIndex = prev.findIndex((entry) => entry.userId === userId);
-                              const next = [...prev];
-                              if (existingIndex >= 0) {
-                                next[existingIndex] = { ...next[existingIndex], departureDate: e.target.value };
-                              } else {
-                                next.push({ userId, departureDate: e.target.value });
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                        <span className="text-xs text-slate-500">Retorno:</span>
-                        <input
-                          type="date"
-                          className="neumorphic-input text-xs"
-                          value={assignment?.returnDate || ''}
-                          onChange={(e) => {
-                            setNewEventUserAssignments((prev) => {
-                              const existingIndex = prev.findIndex((entry) => entry.userId === userId);
-                              const next = [...prev];
-                              if (existingIndex >= 0) {
-                                next[existingIndex] = { ...next[existingIndex], returnDate: e.target.value };
-                              } else {
-                                next.push({ userId, returnDate: e.target.value });
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="neumorphic-button min-w-[90px]"
-                          onClick={() => {
-                            setNewEventUsers((prev) => prev.filter((id) => id !== userId));
-                            setNewEventUserAssignments((prev) => prev.filter((assignmentEntry) => assignmentEntry.userId !== userId));
-                          }}
-                        >Remover</button>
-                      </div>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </div>
-            <div className="flex items-end sm:col-span-2 lg:col-span-1">
-              <button type="button" className="neumorphic-button w-full h-full" onClick={createEvent}>Salvar Evento</button>
-            </div>
-          </div>
-        )}
-      </NeumorphicCard>
-
-      {alertMessages.length > 0 && (
-        <div className="rounded-3xl border border-rose-500 bg-rose-100 p-4 text-sm text-rose-900">
-          {alertMessages.map((message, index) => (
-            <p key={index} className="font-semibold">{message}</p>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-6">
-        <NeumorphicCard className="p-4">
-          <h3 className="text-xl font-semibold">Eventos em andamento</h3>
-          <div className="mt-4 space-y-4">
-            {Object.keys(groupedActiveEvents).length === 0 ? (
-              <div className="text-slate-500">Nenhum evento ativo.</div>
-            ) : (
-              Object.entries(groupedActiveEvents).map(([month, monthEvents]) => (
-                <div key={month} className="space-y-3">
-                  <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{month}</div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {monthEvents.map((event) => (
-                      <button key={event.id} type="button" onClick={() => handleSelectEvent(event.id)} className={`text-left rounded-3xl border p-4 shadow-sm transition hover:shadow-md ${getEventCardColor(event)}`}>
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <div className="text-lg font-semibold text-slate-800">{event.name}</div>
-                            <div className="text-sm text-slate-500">{event.locationName || event.clientName}</div>
-                          </div>
-                          <span className={`rounded-full px-2 py-1 text-xs font-medium ${getEventCardColor(event).includes('emerald') ? 'bg-emerald-600 text-white' : getEventCardColor(event).includes('sky') ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100'}`}>
-                            {event.status}
-                          </span>
-                        </div>
-                        <div className="mt-3 text-sm text-slate-600">
-                          <div>Cliente: {event.clientName || 'Não informado'}</div>
-                          <div>Período: {formatShortDate(event.startDate)} • {formatShortDate(event.endDate)}</div>
-                          <div>Profissionais: {(event.users || [])
-                              .map((userId) => users.find((u) => u.id === userId))
-                              .filter(Boolean)
-                              .map((u) => u.name)
-                              .join(', ') || 'Nenhum profissional adicionado'}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </NeumorphicCard>
-
-        <NeumorphicCard className="p-4">
-          <h3 className="text-xl font-semibold">Eventos encerrados</h3>
-          <div className="mt-4 space-y-4">
-            {Object.keys(groupedCompletedEvents).length === 0 ? (
-              <div className="text-slate-500">Nenhum evento encerrado.</div>
-            ) : (
-              Object.entries(groupedCompletedEvents).map(([month, monthEvents]) => (
-                <div key={month} className="space-y-3">
-                  <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{month}</div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {monthEvents.map((event) => (
-                      <div key={event.id} className="rounded-3xl bg-white/80 p-4 shadow-sm transition hover:shadow-md">
-                        <button type="button" onClick={() => handleSelectEvent(event.id)} className="w-full text-left">
-                          <div className="flex items-center justify-between gap-2">
-                            <div>
-                              <div className="text-lg font-semibold text-slate-800">{event.name}</div>
-                              <div className="text-sm text-slate-500">{event.locationName || event.clientName}</div>
-                            </div>
-                            <span className="rounded-full bg-emerald-600 px-2 py-1 text-xs font-medium text-white">Concluído</span>
-                          </div>
-                          <div className="mt-3 text-sm text-slate-600">
-                            <div>Cliente: {event.clientName || 'Não informado'}</div>
-                            <div>Período: {formatShortDate(event.startDate)} • {formatShortDate(event.endDate)}</div>
-                            <div>Profissionais: {(event.users || [])
-                                .map((userId) => users.find((u) => u.id === userId))
-                                .filter(Boolean)
-                                .map((u) => u.name)
-                                .join(', ') || 'Nenhum profissional adicionado'}
-                            </div>
-                          </div>
-                        </button>
-                        {canManageEvents && (
-                          <button
-                            type="button"
-                            className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                            onClick={() => reopenEvent(event)}
-                          >
-                            Reabrir evento
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </NeumorphicCard>
-      </div>
-    </div>
-  );
-
   const renderEventBoard = () => {
     if (!selectedEvent) return null;
 
@@ -3395,7 +3160,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
         </div>
       </div>
     );
-  };
+  }
 
   return (
     <ErrorBoundary>

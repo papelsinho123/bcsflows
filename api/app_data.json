@@ -1,0 +1,153 @@
+{
+  "updatedAt": 1755180000000,
+  "users": [
+    {
+      "id": 1,
+      "usuario": "andersonsiebre",
+      "username": "andersonsiebre",
+      "email": "andersonsiebre@bcs.com",
+      "password": "anderson1",
+      "role": "master",
+      "name": "Anderson Siebre",
+      "leaveTaken": 0,
+      "leaveRuleDays": 7
+    },
+    {
+      "id": 2,
+      "usuario": "admin",
+      "username": "admin",
+      "email": "admin@bcs.com",
+      "password": "admin",
+      "role": "admin",
+      "name": "Administrador BCS",
+      "leaveTaken": 0,
+      "leaveRuleDays": 7
+    },
+    {
+      "id": 3,
+      "usuario": "user",
+      "username": "user",
+      "email": "user@bcs.com",
+      "password": "user",
+      "role": "user",
+      "name": "Usuário Padrão",
+      "leaveTaken": 0,
+      "leaveRuleDays": 7
+    }
+  ],
+  "inventory": [
+    {
+      "id": 1,
+      "type": "IMPRESSORA TÉRMICA",
+      "name": "Zebra TLP 2824",
+      "serial": "ZBR-1234",
+      "quantity": 6,
+      "status": "Disponível"
+    },
+    {
+      "id": 2,
+      "type": "COLETOR DE DADOS",
+      "name": "Honeywell Dolphin",
+      "serial": "HD-1122",
+      "quantity": 3,
+      "status": "Disponível"
+    },
+    {
+      "id": 3,
+      "type": "LEITOR BARCODE",
+      "name": "Motorola LS2208",
+      "serial": "MTR-0021",
+      "quantity": 4,
+      "status": "EM MANUTENÇÃO"
+    },
+    {
+      "id": 4,
+      "type": "NOTEBOOK",
+      "name": "Dell Inspiron 15",
+      "serial": "DL-5587",
+      "quantity": 2,
+      "status": "Disponível"
+    }
+  ],
+  "config": {
+    "nfContact": {
+      "name": "Rafael Sales",
+      "email": "nf@bcs.com",
+      "phone": "+55 (11) 99999-9999"
+    },
+    "itemTypes": [
+      "IMPRESSORA TÉRMICA",
+      "IMPRESSORA LASER",
+      "TOTEM",
+      "COLETOR DE DADOS",
+      "LEITOR BARCODE",
+      "NOTEBOOK",
+      "ETIQUETA",
+      "RIBBON",
+      "ALL IN ONE",
+      "CELULAR"
+    ],
+    "proposalItemTypes": [],
+    "expenseTypes": [],
+    "paymentTypes": [],
+    "defaultItems": [
+      {
+        "id": 1,
+        "type": "IMPRESSORA TÉRMICA",
+        "subframe": "SECRETARIA"
+      },
+      {
+        "id": 2,
+        "type": "NOTEBOOK",
+        "subframe": "CAEX"
+      },
+      {
+        "id": 3,
+        "type": "COLETOR DE DADOS",
+        "subframe": "CONTROLE DE ACESSO"
+      }
+    ]
+  },
+  "events": [
+    {
+      "id": 9999,
+      "name": "Evento de teste",
+      "address": "Rua de Teste, 123",
+      "locationName": "Local de Teste",
+      "clientName": "Cliente Teste",
+      "organizerName": "",
+      "contact": "+55 11 99999-0000",
+      "departureDate": "2026-08-20",
+      "startDate": "2026-08-22",
+      "eventDate": "2026-08-22",
+      "endDate": "2026-08-24",
+      "returnDate": "2026-08-24",
+      "caexMontageDate": "",
+      "secretariaMontageDate": "",
+      "labelSize": "9X5",
+      "environmentLink": "https://sigevent.pro/bcs/",
+      "status": "A Iniciar",
+      "users": [],
+      "userAssignments": [],
+      "boards": {
+        "info": {},
+        "montagem": [
+          {
+            "id": "test-montagem-1",
+            "type": "IMPRESSORA TÉRMICA",
+            "name": "Impressora Térmica",
+            "quantity": 1,
+            "checked": false,
+            "sector": "SECRETARIA"
+          }
+        ],
+        "desmontagem": [],
+        "hospedagem": [],
+        "deslocamento": [],
+        "separar": []
+      },
+      "extraInfo": "",
+      "extraInfoMessages": []
+    }
+  ]
+}
