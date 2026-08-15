@@ -402,7 +402,7 @@ function App() {
       <div className="max-w-[1700px] mx-auto space-y-6">
         <header className="neumorphic-card p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <img src={assetUrl('app-icon.png')} alt="BCS Flows" className="h-12 w-12 rounded-lg object-cover shadow-md" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 text-xs font-bold text-slate-700 shadow-md">BCS</div>
             <div>
               <p className="text-slate-500">BCS Flows - <strong>Planejamento estratégico.</strong> Operação sem falhas.</p>
             </div>
