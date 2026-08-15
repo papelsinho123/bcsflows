@@ -211,14 +211,6 @@ function BCSGlassLogo({ className = '' }) {
   );
 }
 
-export default function AppWrapper() {
-  return (
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
-}
-
 function App() {
   const [data, setData] = useState(initialData);
   const [user, setUser] = useState(null);
@@ -635,6 +627,14 @@ function App() {
         dashboard
       )}
     </div>
+  );
+}
+
+export default function AppWrapper() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   );
 }
 
