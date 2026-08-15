@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText } from 'lucide-react';
 import InventoryModule from './components/InventoryModule.jsx';
 import SettingsModule from './components/SettingsModule.jsx';
-import EventBoard from './components/EventBoard.jsx';
 import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
+
+const EventBoard = React.lazy(() => import('./components/EventBoard.jsx'));
 import { canManageAdminFeatures, findUserByCredentials, normalizeUserRole } from './utils/auth.js';
 import { isSameData, loadServerData, saveToServer, syncWithServer } from './utils/storage.js';
 import './index.css';
@@ -436,15 +437,17 @@ function App() {
 
         <main>
           {route === 'events' && (
-            <EventBoard
-              key={eventBoardResetKey}
-              events={data.events}
-              inventory={data.inventory}
-              config={data.config}
-              users={data.users}
-              user={user}
-              onEventsChange={updateEvents}
-            />
+            <Suspense fallback={<div className="neumorphic-card p-8 text-center text-slate-600">Carregando painel de eventos...</div>}>
+              <EventBoard
+                key={eventBoardResetKey}
+                events={data.events}
+                inventory={data.inventory}
+                config={data.config}
+                users={data.users}
+                user={user}
+                onEventsChange={updateEvents}
+              />
+            </Suspense>
           )}
           {route === 'dashboard' && (
             <DashboardModule
