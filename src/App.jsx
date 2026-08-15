@@ -387,6 +387,7 @@ function App() {
   const isMaster = currentRole === 'master';
   const isAdmin = canManageAdminFeatures(user?.role || '');
   const canAccessSettings = isAdmin;
+  const currentConfig = data?.config || initialData.config;
 
   const visibleNav = [
     { id: 'events', label: 'Eventos', icon: Layers, private: false },
@@ -481,7 +482,7 @@ function App() {
               users={data.users}
             />
           )}
-          {route === 'inventory' && <InventoryModule inventory={data.inventory} events={data.events} onUpdateInventory={updateInventory} itemTypes={data.config.itemTypes} currentUser={user} />}
+          {route === 'inventory' && <InventoryModule inventory={data?.inventory || []} events={data?.events || []} onUpdateInventory={updateInventory} itemTypes={currentConfig?.itemTypes || []} currentUser={user} />}
           {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} />}
           {!['events', 'dashboard', 'finance', 'calendar', 'inventory', 'settings'].includes(route) && (
             <div className="p-6 text-center text-slate-600">

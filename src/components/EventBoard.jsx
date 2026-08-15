@@ -395,10 +395,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     );
   }
 
-  if (!selectedEvent) {
-    return renderEventSelector();
-  }
-
   const handleForm = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setFormErrors((prev) => prev.filter((error) => error.field !== field));
@@ -496,6 +492,10 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const updateEvent = (updated) => onEventsChange(events.map((item) => (item.id === updated.id ? updated : item)));
+
+  if (!selectedEvent) {
+    return renderEventSelector();
+  }
 
   const normalizeHeaderKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
 
