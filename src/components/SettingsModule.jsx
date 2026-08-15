@@ -38,23 +38,24 @@ const CORE_ITEM_TYPES = [
 const HIDDEN_ITEM_TYPES = ['IMPRESSORA LASER', 'TOTEM'];
 const CORE_EXPENSE_TYPES = ['HOSPEDAGEM', 'COMBUSTIVEL', 'ESTACIONAMENTO', 'OUTRO'];
 
-export default function SettingsModule({ config, users, onUpdateConfig, onUpdateUsers, currentUser }) {
+export default function SettingsModule({ config = {}, users = [], onUpdateConfig = () => {}, onUpdateUsers = () => {}, currentUser }) {
+  const safeConfig = config || {};
   const isMaster = normalizeUserRole(currentUser?.role || '') === 'master';
   const canCreateUsers = canManageAdminFeatures(currentUser?.role || '') && isMaster;
-  const itemTypes = Array.isArray(config.itemTypes) ? config.itemTypes : [];
+  const itemTypes = Array.isArray(safeConfig.itemTypes) ? safeConfig.itemTypes : [];
   const customItemTypes = itemTypes.filter((type) => !CORE_ITEM_TYPES.includes(type) && !HIDDEN_ITEM_TYPES.includes(type));
   const visibleItemTypes = Array.from(new Set([...itemTypes, ...CORE_ITEM_TYPES])).filter((type) => !HIDDEN_ITEM_TYPES.includes(type));
-  const proposalItems = config.proposalItems ?? [];
-  const legacyProposalItemTypes = config.proposalItemTypes ?? [];
+  const proposalItems = safeConfig.proposalItems ?? [];
+  const legacyProposalItemTypes = safeConfig.proposalItemTypes ?? [];
   const displayProposalItems = Array.from(
     new Map([
       ...(proposalItems || []).map((p) => [p.name.toUpperCase(), { name: p.name, type: p.type, source: 'explicit' }]),
       ...legacyProposalItemTypes.map((t) => [String(t).toUpperCase(), { name: t, type: t, source: 'legacy' }]),
     ]).values(),
   );
-  const defaultItems = config.defaultItems ?? [];
+  const defaultItems = safeConfig.defaultItems ?? [];
   const visibleDefaultItems = defaultItems.filter((item) => !HIDDEN_ITEM_TYPES.includes(item.type));
-  const [contact, setContact] = useState(config.nfContact || { name: '', email: '', phone: '' });
+  const [contact, setContact] = useState(safeConfig.nfContact || { name: '', email: '', phone: '' });
   const [newItem, setNewItem] = useState({ type: '', subframe: 'SECRETARIA' });
   const [newType, setNewType] = useState('');
   const [newProposalName, setNewProposalName] = useState('');
@@ -79,7 +80,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
     }
     setSettingsAlerts([]);
     onUpdateConfig({
-      ...config,
+      ...safeConfig,
       defaultItems: [...defaultItems, { ...newItem, id: Date.now() }],
     });
     setNewItem({ type: '', subframe: 'SECRETARIA' });
@@ -97,7 +98,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
     }
     setSettingsAlerts([]);
     onUpdateConfig({
-      ...config,
+      ...safeConfig,
       itemTypes: [...itemTypes, type],
     });
     setNewType('');
@@ -106,7 +107,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
   const removeType = (typeToRemove) => {
     if (CORE_ITEM_TYPES.includes(typeToRemove)) return;
     onUpdateConfig({
-      ...config,
+      ...safeConfig,
       itemTypes: itemTypes.filter((itemType) => itemType !== typeToRemove),
     });
   };
@@ -122,7 +123,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
       return;
     }
     const next = itemTypes.map((t) => (t === oldType ? value : t));
-    onUpdateConfig({ ...config, itemTypes: next });
+    onUpdateConfig({ ...safeConfig, itemTypes: next });
     setEditingType(null);
     setTypeEditDraft('');
   };
@@ -140,7 +141,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
     }
     setSettingsAlerts([]);
     onUpdateConfig({
-      ...config,
+      ...safeConfig,
       proposalItems: [...proposalItems, { name, type }],
     });
     setNewProposalName('');
@@ -149,7 +150,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
 
   const removeProposalItem = (nameToRemove) => {
     onUpdateConfig({
-      ...config,
+      ...safeConfig,
       proposalItems: proposalItems.filter((p) => p.name !== nameToRemove),
       proposalItemTypes: legacyProposalItemTypes.filter((t) => t !== nameToRemove),
     });
@@ -175,7 +176,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
       // remove legacy and add explicit mapping
       next = [...proposalItems.filter((p) => p.name !== oldName), { name, type }];
     }
-    onUpdateConfig({ ...config, proposalItems: next, proposalItemTypes: legacyProposalItemTypes.filter((t) => t !== oldName) });
+    onUpdateConfig({ ...safeConfig, proposalItems: next, proposalItemTypes: legacyProposalItemTypes.filter((t) => t !== oldName) });
     setEditingProposal(null);
     setProposalEditDraft({ name: '', type: '' });
   };
@@ -183,7 +184,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
   
 
   const removeItem = (id) => onUpdateConfig({
-    ...config,
+    ...safeConfig,
     defaultItems: defaultItems.filter((item) => item.id !== id),
   });
 
@@ -247,21 +248,21 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
                 <button className="neumorphic-button primary" onClick={() => {
                   const t = (newExpenseType || '').trim().toUpperCase();
                   if (!t) return setSettingsAlerts([{ field: 'expense', message: 'Informe o tipo de despesa.' }]);
-                  const existing = Array.isArray(config.expenseTypes) ? config.expenseTypes : [];
+                  const existing = Array.isArray(safeConfig.expenseTypes) ? safeConfig.expenseTypes : [];
                   if (existing.includes(t) || CORE_EXPENSE_TYPES.includes(t)) return setSettingsAlerts([{ field: 'expense', message: 'Tipo já existe.' }]);
-                  onUpdateConfig({ ...config, expenseTypes: [...existing, t] });
+                  onUpdateConfig({ ...safeConfig, expenseTypes: [...existing, t] });
                   setNewExpenseType('');
                 }}>Adicionar</button>
               </div>
               <div className="space-y-2 mt-3">
-                {(config.expenseTypes || []).length === 0 ? (
+                {(safeConfig.expenseTypes || []).length === 0 ? (
                   <div className="text-sm text-slate-500">Nenhum tipo de despesa customizado.</div>
                 ) : (
-                  (config.expenseTypes || []).map((t) => (
+                  (safeConfig.expenseTypes || []).map((t) => (
                     <div key={t} className="flex items-center justify-between gap-3 p-3 rounded-3xl bg-white/70 shadow-sm">
                       <div className="font-medium">{t}</div>
                       <div>
-                        <button className="neumorphic-button outline" onClick={() => onUpdateConfig({ ...config, expenseTypes: (config.expenseTypes || []).filter((x) => x !== t) })}>Remover</button>
+                        <button className="neumorphic-button outline" onClick={() => onUpdateConfig({ ...safeConfig, expenseTypes: (safeConfig.expenseTypes || []).filter((x) => x !== t) })}>Remover</button>
                       </div>
                     </div>
                   ))
@@ -278,21 +279,21 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
                 <button className="neumorphic-button primary" onClick={() => {
                   const p = (newPaymentType || '').trim();
                   if (!p) return setSettingsAlerts([{ field: 'payment', message: 'Informe o tipo de pagamento.' }]);
-                  const existing = Array.isArray(config.paymentTypes) ? config.paymentTypes : [];
+                  const existing = Array.isArray(safeConfig.paymentTypes) ? safeConfig.paymentTypes : [];
                   if (existing.includes(p)) return setSettingsAlerts([{ field: 'payment', message: 'Tipo já existe.' }]);
-                  onUpdateConfig({ ...config, paymentTypes: [...existing, p] });
+                  onUpdateConfig({ ...safeConfig, paymentTypes: [...existing, p] });
                   setNewPaymentType('');
                 }}>Adicionar</button>
               </div>
               <div className="space-y-2 mt-3">
-                {(config.paymentTypes || []).length === 0 ? (
+                {(safeConfig.paymentTypes || []).length === 0 ? (
                   <div className="text-sm text-slate-500">Nenhum tipo de pagamento cadastrado.</div>
                 ) : (
-                  (config.paymentTypes || []).map((p) => (
+                  (safeConfig.paymentTypes || []).map((p) => (
                     <div key={p} className="flex items-center justify-between gap-3 p-3 rounded-3xl bg-white/70 shadow-sm">
                       <div className="font-medium">{p}</div>
                       <div>
-                        <button className="neumorphic-button outline" onClick={() => onUpdateConfig({ ...config, paymentTypes: (config.paymentTypes || []).filter((x) => x !== p) })}>Remover</button>
+                        <button className="neumorphic-button outline" onClick={() => onUpdateConfig({ ...safeConfig, paymentTypes: (safeConfig.paymentTypes || []).filter((x) => x !== p) })}>Remover</button>
                       </div>
                     </div>
                   ))
@@ -307,7 +308,7 @@ export default function SettingsModule({ config, users, onUpdateConfig, onUpdate
               <input className="neumorphic-input" placeholder="E-mail" value={contact.email} onChange={(e) => handleContactChange('email', e.target.value)} />
               <input className="neumorphic-input" placeholder="Telefone / WhatsApp" value={contact.phone} onChange={(e) => handleContactChange('phone', formatWhatsappMask(e.target.value))} />
             </div>
-            <button className="neumorphic-button primary mt-4" onClick={() => onUpdateConfig({ ...config, nfContact: contact })}>Salvar Contato NF</button>
+            <button className="neumorphic-button primary mt-4" onClick={() => onUpdateConfig({ ...safeConfig, nfContact: contact })}>Salvar Contato NF</button>
           </div>
 
           <div className="space-y-3">

@@ -372,6 +372,65 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                   <input className="neumorphic-input w-full" value={form.labelSize} onChange={(e) => handleForm('labelSize', e.target.value)} />
                 </label>
               </div>
+
+              <div className="mt-6 rounded-3xl border border-slate-200 bg-white/70 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h4 className="text-base font-semibold text-slate-800">Profissionais do evento</h4>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                    {newEventUserAssignments.length} selecionado(s)
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-end">
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Profissional</span>
+                    <select className="neumorphic-select w-full" value={selectedEventUserId} onChange={(e) => setSelectedEventUserId(e.target.value)}>
+                      <option value="">Selecione</option>
+                      {users.map((userOption) => (
+                        <option key={userOption.id} value={String(userOption.id)}>
+                          {userOption.name || userOption.usuario || 'Usuário'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Data de partida</span>
+                    <input type="date" className="neumorphic-input w-full" value={selectedEventUserDepartureDate} onChange={(e) => setSelectedEventUserDepartureDate(e.target.value)} />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Data de retorno</span>
+                    <input type="date" className="neumorphic-input w-full" value={selectedEventUserReturnDate} onChange={(e) => setSelectedEventUserReturnDate(e.target.value)} />
+                  </label>
+                  <button type="button" className="neumorphic-button primary" onClick={handleAddEventProfessional} disabled={!selectedEventUserId}>
+                    Adicionar
+                  </button>
+                </div>
+
+                {newEventUserAssignments.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {newEventUserAssignments.map((assignment) => {
+                      const professional = users.find((userOption) => String(userOption.id) === String(assignment.userId));
+                      return (
+                        <div key={assignment.userId} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="font-medium text-slate-800">{professional?.name || professional?.usuario || 'Profissional'}</div>
+                            <div className="text-xs text-slate-500">
+                              {assignment.departureDate || '—'} → {assignment.returnDate || '—'}
+                            </div>
+                          </div>
+                          <button type="button" className="neumorphic-button outline" onClick={() => handleRemoveEventProfessional(assignment.userId)}>
+                            Remover
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+                    Nenhum profissional adicionado ao evento.
+                  </div>
+                )}
+              </div>
               {formErrors.length > 0 && (
                 <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
                   {formErrors.map((error) => (
@@ -393,6 +452,40 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       </div>
     );
   }
+
+  const handleAddEventProfessional = () => {
+    const professionalId = String(selectedEventUserId || '').trim();
+    if (!professionalId) return;
+
+    const professional = users.find((userOption) => String(userOption.id) === professionalId);
+    if (!professional) return;
+
+    const normalizedAssignment = {
+      userId: professionalId,
+      departureDate: selectedEventUserDepartureDate || form.departureDate || form.startDate || '',
+      returnDate: selectedEventUserReturnDate || form.returnDate || form.endDate || '',
+    };
+
+    setNewEventUsers((prev) => (prev.some((id) => String(id) === professionalId) ? prev : [...prev, professionalId]));
+    setNewEventUserAssignments((prev) => {
+      const existingIndex = prev.findIndex((assignment) => String(assignment.userId) === professionalId);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = normalizedAssignment;
+        return next;
+      }
+      return [...prev, normalizedAssignment];
+    });
+    setSelectedEventUserId('');
+    setSelectedEventUserDepartureDate('');
+    setSelectedEventUserReturnDate('');
+  };
+
+  const handleRemoveEventProfessional = (userId) => {
+    const professionalId = String(userId);
+    setNewEventUsers((prev) => prev.filter((id) => String(id) !== professionalId));
+    setNewEventUserAssignments((prev) => prev.filter((assignment) => String(assignment.userId) !== professionalId));
+  };
 
   const handleForm = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
