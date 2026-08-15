@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
 import NeumorphicCard from './NeumorphicCard.jsx';
 import { Pencil, Trash2, CheckCircle2, FileText, MessageCircle, PlusCircle, ChevronDown, ExternalLink, MoreHorizontal, ArrowRight } from 'lucide-react';
 import { generateSeparationPdf, generateEventChecklistPdf, generateMountedItemsPdf } from '../utils/pdfGenerator.js';
@@ -499,28 +498,41 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const normalizeHeaderKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
 
-  const parseXlsxFile = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const arrayBuffer = event.target.result;
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet, {
-          defval: '',
-          raw: false,
-          cellDates: true,
-          dateNF: 'yyyy-mm-dd',
-        });
-        resolve(rows);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsArrayBuffer(file);
-  });
+  const loadXlsxLibrary = async () => {
+    try {
+      return await import('xlsx');
+    } catch (error) {
+      console.error('Erro ao carregar a biblioteca XLSX:', error);
+      throw new Error('Não foi possível carregar a biblioteca de importação do Excel.');
+    }
+  };
+
+  const parseXlsxFile = async (file) => {
+    const XLSX = await loadXlsxLibrary();
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const arrayBuffer = event.target.result;
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, {
+            defval: '',
+            raw: false,
+            cellDates: true,
+            dateNF: 'yyyy-mm-dd',
+          });
+          resolve(rows);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsArrayBuffer(file);
+    });
+  };
 
   const getHeaderValue = (row, aliases) => {
     const normalizedRow = Object.entries(row).reduce((acc, [key, value]) => {
