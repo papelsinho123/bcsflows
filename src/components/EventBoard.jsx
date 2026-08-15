@@ -593,10 +593,14 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const loadXlsxLibrary = async () => {
     try {
-      return await import('xlsx');
+      return await import(/* @vite-ignore */ 'xlsx/xlsx.mjs');
     } catch (error) {
-      console.error('Erro ao carregar a biblioteca XLSX:', error);
-      throw new Error('Não foi possível carregar a biblioteca de importação do Excel.');
+      try {
+        return await import('xlsx');
+      } catch (fallbackError) {
+        console.error('Erro ao carregar a biblioteca XLSX:', fallbackError);
+        throw new Error('Não foi possível carregar a biblioteca de importação do Excel.');
+      }
     }
   };
 
