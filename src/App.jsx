@@ -146,7 +146,13 @@ const parseCsvRows = (csvText) => {
 };
 
 function BCSGlassLogo({ className = '' }) {
-  const logoId = React.useId().replace(/:/g, '');
+  const logoIdRef = React.useRef('');
+
+  if (!logoIdRef.current) {
+    logoIdRef.current = `bcs-logo-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  const logoId = logoIdRef.current;
 
   return (
     <svg viewBox="0 0 260 260" className={`bcs-logo-glass ${className}`} role="img" aria-label="BCS Flows">
