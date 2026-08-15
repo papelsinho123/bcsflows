@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -15,13 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-
-      - name: Clear npm cache and remove lock file
-        run: |
-          npm cache clean --force
-          rm -f package-lock.json
-          rm -rf node_modules
+          node-version: '20'
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -30,6 +26,7 @@ jobs:
         run: npm run build
 
       - name: Prepare deploy package
+        shell: bash
         run: |
           rm -rf deploy || true
           mkdir -p deploy
@@ -44,14 +41,24 @@ jobs:
           fi
           find deploy -maxdepth 2 -print | sort
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@4.3.0
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          local-dir: ./deploy/
-          server-dir: public_html/bcsflows/
-          dangerous-clean-slate: true
-          git-ftp-args: --insecure
+      - name: Deploy via FTP with lftp
+        shell: bash
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_HOST" <<EOF
+          set ftp:ssl-allow no
+          set ssl:verify-certificate no
+          set ftp:passive-mode true
+          mkdir -p /public_html/bcsflows
+          mkdir -p /public_html/bcsflows/api
+          cd /public_html/bcsflows
+          lcd "$GITHUB_WORKSPACE/deploy"
+          mirror -R --delete --verbose ./ ./
+          bye
+          EOF
