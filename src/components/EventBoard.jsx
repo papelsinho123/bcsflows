@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import NeumorphicCard from './NeumorphicCard.jsx';
 import { Pencil, Trash2, CheckCircle2, FileText, MessageCircle, PlusCircle, ChevronDown, ExternalLink, MoreHorizontal, ArrowRight } from 'lucide-react';
 import { generateSeparationPdf, generateEventChecklistPdf, generateMountedItemsPdf } from '../utils/pdfGenerator.js';
@@ -591,22 +592,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const normalizeHeaderKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
 
-  const loadXlsxLibrary = async () => {
-    try {
-      return await import(/* @vite-ignore */ 'xlsx/xlsx.mjs');
-    } catch (error) {
-      try {
-        return await import('xlsx');
-      } catch (fallbackError) {
-        console.error('Erro ao carregar a biblioteca XLSX:', fallbackError);
-        throw new Error('Não foi possível carregar a biblioteca de importação do Excel.');
-      }
-    }
-  };
-
   const parseXlsxFile = async (file) => {
-    const XLSX = await loadXlsxLibrary();
-
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
