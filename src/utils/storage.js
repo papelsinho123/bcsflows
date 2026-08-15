@@ -5,8 +5,8 @@ const getApiBase = () => {
   const fromWindow = typeof window !== 'undefined' ? window.__BCS_API_BASE__ : undefined;
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname.replace(/\/+$/, '');
-    const subfolder = pathname.includes('/bcsflows') ? '/bcsflows' : '';
-    const fallback = `${subfolder}/api` || '/api';
+    const hasSubfolder = pathname.includes('/bcsflows');
+    const fallback = hasSubfolder ? '/bcsflows/api' : '/api';
     return import.meta.env.VITE_API_BASE || fromWindow || fallback;
   }
   return import.meta.env.VITE_API_BASE || fromWindow || '/bcsflows/api';
