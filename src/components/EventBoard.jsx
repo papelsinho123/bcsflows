@@ -196,6 +196,12 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function EventBoard({ events = [], inventory = [], config = {}, users = [], user, onEventsChange = () => {} }) {
+  const safeConfig = config && typeof config === 'object' ? config : {};
+  const itemTypes = Array.isArray(safeConfig.itemTypes) ? safeConfig.itemTypes : [];
+  const proposalItemTypes = Array.isArray(safeConfig.proposalItemTypes) ? safeConfig.proposalItemTypes : [];
+  const defaultItems = Array.isArray(safeConfig.defaultItems) ? safeConfig.defaultItems : [];
+  const nfContact = safeConfig.nfContact && typeof safeConfig.nfContact === 'object' ? safeConfig.nfContact : {};
+
   const [lastSavedError, setLastSavedError] = useState(null);
   useEffect(() => {
     try {
@@ -213,7 +219,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const [newSeparationSource, setNewSeparationSource] = useState('ESTOQUE');
   const [newSeparationInventoryId, setNewSeparationInventoryId] = useState('');
   const [newSeparationQuantity, setNewSeparationQuantity] = useState(1);
-  const [newSeparationRentalType, setNewSeparationRentalType] = useState(config.itemTypes?.find((type) => type !== 'LOCAÇÃO EXTERNA') || config.itemTypes?.[0] || '');
+  const [newSeparationRentalType, setNewSeparationRentalType] = useState(itemTypes.find((type) => type !== 'LOCAÇÃO EXTERNA') || itemTypes[0] || '');
   const [newSeparationRentalName, setNewSeparationRentalName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [newEventUsers, setNewEventUsers] = useState([]);
@@ -715,8 +721,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const normalizedSheetType = normalizeItemText(sheetType);
     const normalizedEquipmentName = normalizeItemText(equipmentName);
     const knownTypes = [
-      ...(config.itemTypes || []),
-      ...(config.proposalItemTypes || []),
+      ...itemTypes,
+      ...proposalItemTypes,
     ].map((type) => ({ original: type, normalized: normalizeItemText(type) }));
 
     const exactMatch = knownTypes.find((type) => type.normalized === normalizedSheetType || type.normalized === normalizedEquipmentName);
@@ -1758,7 +1764,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     });
 
     const itensSeparation = Array.from(groupedItems.values());
-    const printerCount = event.boards.montagem.filter((item) => String(item.type).toUpperCase().trim() === 'IMPRESSORA TÉRMICA').reduce((sum, item) => sum + Number(item.quantity), 0);
+    const printerCount = (event?.boards?.montagem || []).filter((item) => String(item.type || '').toUpperCase().trim() === 'IMPRESSORA TÉRMICA').reduce((sum, item) => sum + Number(item.quantity), 0);
 
     if (laserPrinterCount > 0) {
       itensSeparation.push({
@@ -3095,7 +3101,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                           <div className="grid gap-3 sm:grid-cols-[2fr_1fr_auto] items-end">
                             <select className="neumorphic-select w-full" value={newSeparationRentalType} onChange={(e) => setNewSeparationRentalType(e.target.value)} disabled={isEventCompleted}>
                               <option value="">Selecionar tipo de equipamento</option>
-                              {config.itemTypes.filter((type) => type !== 'LOCAÇÃO EXTERNA').map((type) => (
+                              {(itemTypes.filter((type) => type !== 'LOCAÇÃO EXTERNA')).map((type) => (
                                 <option key={type} value={type}>{type}</option>
                               ))}
                             </select>
@@ -3106,8 +3112,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                           <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => syncSeparation(selectedEvent)} disabled={isEventCompleted}><FileText className="mr-2 h-4 w-4" />Refazer lista</button>
                           <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => generateSeparationPdf(selectedEvent, selectedEvent.boards.separar || [], config.nfContact)}><FileText className="mr-2 h-4 w-4" />Gerar PDF</button>
-                          <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => window.open(`https://wa.me/${formatPhoneUrl(config.nfContact.phone)}?text=${buildWhatsAppMessage(selectedEvent)}`, '_blank')}><MessageCircle className="mr-2 h-4 w-4" />Enviar para NF</button>
-                          <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => window.open(`https://wa.me/${formatPhoneUrl(config.nfContact.phone)}?text=${buildWhatsAppMessage(selectedEvent, { returnRequest: true })}`, '_blank')}><MessageCircle className="mr-2 h-4 w-4" />Solicitar NF de retorno</button>
+                          <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => window.open(`https://wa.me/${formatPhoneUrl(nfContact.phone || '')}?text=${buildWhatsAppMessage(selectedEvent)}`, '_blank')}><MessageCircle className="mr-2 h-4 w-4" />Enviar para NF</button>
+                          <button className="neumorphic-button secondary w-full flex items-center justify-center gap-2" onClick={() => window.open(`https://wa.me/${formatPhoneUrl(nfContact.phone || '')}?text=${buildWhatsAppMessage(selectedEvent, { returnRequest: true })}`, '_blank')}><MessageCircle className="mr-2 h-4 w-4" />Solicitar NF de retorno</button>
                         </div>
                         <div className="space-y-3 mt-4">
                           <div className="grid gap-3 sm:grid-cols-2">

@@ -27,10 +27,47 @@ describe('mergeAppData', () => {
     });
   });
 
-  it('preserves newest data when updatedAt is missing', () => {
+  it('preserves local records when a newer remote payload is incomplete or empty', () => {
+    const local = {
+      updatedAt: 100,
+      users: [{ id: 1, name: 'Anderson' }],
+      events: [{ id: 9, name: 'Evento local' }],
+      inventory: [{ id: 4, name: 'Impressora' }],
+      config: {
+        itemTypes: ['IMPRESSORA TÉRMICA'],
+        nfContact: { name: 'Contato local' },
+      },
+    };
+
+    const remote = {
+      updatedAt: 200,
+      users: [],
+      events: [],
+      inventory: [],
+      config: {
+        itemTypes: [],
+        nfContact: {},
+      },
+    };
+
+    const result = mergeAppData(local, remote);
+
+    expect(result.users).toEqual(local.users);
+    expect(result.events).toEqual(local.events);
+    expect(result.inventory).toEqual(local.inventory);
+    expect(result.config.itemTypes).toEqual(local.config.itemTypes);
+    expect(result.config.nfContact).toEqual(local.config.nfContact);
+  });
+
+  it('accepts a complete remote payload even when updatedAt is missing', () => {
     const local = { users: [{ id: 1, name: 'Old' }], events: [], inventory: [], config: {} };
     const remote = { users: [{ id: 1, name: 'New' }], events: [], inventory: [], config: {} };
 
-    expect(mergeAppData(local, remote)).toEqual(remote);
+    const result = mergeAppData(local, remote);
+
+    expect(result.users).toEqual(remote.users);
+    expect(result.events).toEqual(remote.events);
+    expect(result.inventory).toEqual(remote.inventory);
+    expect(result.updatedAt).toBeTypeOf('number');
   });
 });

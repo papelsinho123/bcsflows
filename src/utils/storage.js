@@ -17,6 +17,40 @@ const withTimestamp = (data) => ({
   updatedAt: Number(data?.updatedAt || Date.now()),
 });
 
+const hasMeaningfulArray = (value) => Array.isArray(value) ? value.some((entry) => {
+  if (entry === null || entry === undefined) return false;
+  if (typeof entry === 'string') return entry.trim() !== '';
+  if (typeof entry === 'object') return Object.keys(entry).length > 0;
+  return true;
+}) : false;
+
+const hasMeaningfulConfig = (config) => {
+  if (!config || typeof config !== 'object') return false;
+
+  return Object.entries(config).some(([key, value]) => {
+    if (Array.isArray(value)) return hasMeaningfulArray(value);
+    if (value && typeof value === 'object') {
+      return Object.values(value).some((nested) => {
+        if (Array.isArray(nested)) return hasMeaningfulArray(nested);
+        if (nested && typeof nested === 'object') return Object.keys(nested).length > 0;
+        return String(nested).trim() !== '';
+      });
+    }
+
+    if (key === 'updatedAt') return false;
+    return String(value).trim() !== '';
+  });
+};
+
+const hasMeaningfulState = (data) => {
+  if (!data || typeof data !== 'object') return false;
+  if (hasMeaningfulArray(data.users)) return true;
+  if (hasMeaningfulArray(data.events)) return true;
+  if (hasMeaningfulArray(data.inventory)) return true;
+  if (hasMeaningfulConfig(data.config)) return true;
+  return false;
+};
+
 const log = (...args) => {
   if (DEBUG) {
     console.log('[BCS Sync]', ...args);
@@ -45,8 +79,8 @@ export const loadServerData = async () => {
       const payload = await response.json();
       const remotePayload = payload?.payload || payload;
 
-      if (!remotePayload || typeof remotePayload !== 'object') {
-        log(`❌ ${endpoint} payload vazio`);
+      if (!remotePayload || typeof remotePayload !== 'object' || !hasMeaningfulState(remotePayload)) {
+        log(`❌ ${endpoint} payload vazio ou incompleto`);
         continue;
       }
 
@@ -115,12 +149,41 @@ export const mergeAppData = (localData = {}, remoteData = {}) => {
   const localStamp = Number(local?.updatedAt || 0);
   const remoteStamp = Number(remote?.updatedAt || 0);
 
-  if (!localStamp && !remoteStamp) {
-    return { ...local, ...remote };
+  if (!hasMeaningfulState(local) && !hasMeaningfulState(remote)) {
+    return { ...local, ...remote, updatedAt: remoteStamp || localStamp || Date.now() };
   }
 
-  if (remoteStamp > localStamp) {
-    return { ...local, ...remote, updatedAt: remoteStamp };
+  if (!hasMeaningfulState(remote)) {
+    return {
+      ...local,
+      updatedAt: localStamp || remoteStamp || Date.now(),
+    };
+  }
+
+  if (!localStamp || remoteStamp > localStamp) {
+    const nextConfig = {
+      ...(local.config || {}),
+      ...(remote.config || {}),
+      nfContact: (remote.config && remote.config.nfContact && Object.keys(remote.config.nfContact).length > 0)
+        ? remote.config.nfContact
+        : (local.config && local.config.nfContact) || {},
+      itemTypes: hasMeaningfulArray(remote.config?.itemTypes)
+        ? remote.config.itemTypes
+        : (local.config && local.config.itemTypes) || [],
+      defaultItems: hasMeaningfulArray(remote.config?.defaultItems)
+        ? remote.config.defaultItems
+        : (local.config && local.config.defaultItems) || [],
+    };
+
+    return {
+      ...local,
+      ...remote,
+      users: hasMeaningfulArray(remote.users) ? remote.users : local.users,
+      events: hasMeaningfulArray(remote.events) ? remote.events : local.events,
+      inventory: hasMeaningfulArray(remote.inventory) ? remote.inventory : local.inventory,
+      config: nextConfig,
+      updatedAt: remoteStamp || localStamp || Date.now(),
+    };
   }
 
   return local;

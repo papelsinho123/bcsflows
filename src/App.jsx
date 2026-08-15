@@ -9,7 +9,7 @@ import { getDailyPhrase } from './utils/dailyPhrase.js';
 
 const EventBoard = React.lazy(() => import('./components/EventBoard.jsx'));
 import { canManageAdminFeatures, findUserByCredentials, normalizeUserRole } from './utils/auth.js';
-import { isSameData, loadServerData, readLocalData, saveToServer, syncWithServer, writeLocalData } from './utils/storage.js';
+import { isSameData, loadServerData, mergeAppData, readLocalData, saveToServer, syncWithServer, writeLocalData } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
@@ -220,12 +220,12 @@ function App() {
     // Sincronizar com servidor a cada 2 segundos (FORÇADO, não condicional)
     syncInterval = window.setInterval(async () => {
       if (!isMounted) return;
-      
+
       const serverData = await loadServerData();
-      if (!serverData) return; // Se servidor não responde, não muda nada
+      if (!serverData) return;
 
       setData((prev) => {
-        const mergedData = syncWithServer(prev);
+        const mergedData = mergeAppData(prev, serverData);
         if (isSameData(prev, mergedData)) {
           return prev;
         }
@@ -239,7 +239,7 @@ function App() {
         const serverData = await loadServerData();
         if (serverData) {
           setData((prev) => {
-            const mergedData = { ...prev, ...serverData, updatedAt: serverData.updatedAt };
+            const mergedData = mergeAppData(prev, serverData);
             if (isSameData(prev, mergedData)) {
               return prev;
             }
