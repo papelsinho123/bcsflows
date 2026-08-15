@@ -11,10 +11,20 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
+$allowJsonFallback = getenv('BCS_ALLOW_JSON_FALLBACK') === '1' || getenv('BCS_ALLOW_JSON_FALLBACK') === 'true';
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+if (!file_exists(__DIR__ . '/db.php')) {
+    http_response_code(503);
+    echo json_encode(['error' => 'Database bootstrap missing.']);
+    exit;
+}
+
+require_once __DIR__ . '/db.php';
 
 // Arquivo compartilhado entre App e Web
 $dataDir = __DIR__;
@@ -151,21 +161,45 @@ if (!file_exists($dataFile) || filesize($dataFile) < 100) {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-    // Retornar dados compartilhados
+    if ($conn) {
+        $sql = 'SELECT payload FROM app_data WHERE id = 1 LIMIT 1';
+        $result = $conn->query($sql);
+        $row = $result && $result->num_rows > 0 ? $result->fetch_assoc() : null;
+
+        if ($row && !empty($row['payload'])) {
+            $decoded = json_decode($row['payload'], true);
+            http_response_code(200);
+            echo json_encode(['payload' => is_array($decoded) ? $decoded : null, 'source' => 'database']);
+            if ($conn) {
+                $conn->close();
+            }
+            exit;
+        }
+
+        if ($conn) {
+            $conn->close();
+        }
+    }
+
+    if (!$allowJsonFallback) {
+        http_response_code(503);
+        echo json_encode(['error' => 'Banco de dados indisponível para leitura. Configure BCS_DB_HOST, BCS_DB_USER, BCS_DB_PASS e BCS_DB_NAME.']);
+        exit;
+    }
+
     if (file_exists($dataFile) && filesize($dataFile) > 0) {
         $content = file_get_contents($dataFile);
         $payload = json_decode($content, true);
-        
-        // Se JSON está corrompido, retornar dados iniciais
+
         if (!is_array($payload)) {
             $payload = null;
         }
-        
+
         http_response_code(200);
-        echo json_encode(['payload' => $payload]);
+        echo json_encode(['payload' => $payload, 'source' => 'json-fallback']);
     } else {
         http_response_code(200);
-        echo json_encode(['payload' => null]);
+        echo json_encode(['payload' => null, 'source' => 'json-fallback']);
     }
     exit;
 }
@@ -188,6 +222,34 @@ if ($method === 'POST') {
         exit;
     }
 
+    if ($conn) {
+        $payload = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $stmt = $conn->prepare('INSERT INTO app_data (id, payload, updated_at) VALUES (1, ?, NOW()) ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()');
+
+        if ($stmt) {
+            $stmt->bind_param('s', $payload);
+            $ok = $stmt->execute();
+            $stmt->close();
+            $conn->close();
+
+            if ($ok) {
+                http_response_code(200);
+                echo json_encode(['success' => true, 'saved' => true, 'source' => 'database', 'timestamp' => $data['updatedAt'] ?? time() * 1000]);
+                exit;
+            }
+        }
+
+        if ($conn) {
+            $conn->close();
+        }
+    }
+
+    if (!$allowJsonFallback) {
+        http_response_code(503);
+        echo json_encode(['error' => 'Não foi possível salvar no banco. Os dados não foram aceitos como sincronizados.']);
+        exit;
+    }
+
     // Garantir que updatedAt existe
     if (!isset($data['updatedAt'])) {
         $data['updatedAt'] = time() * 1000;
@@ -195,16 +257,14 @@ if ($method === 'POST') {
 
     // Salvar ATOMICAMENTE (backup + escreve novo)
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    
-    // Criar backup
+
     $backupFile = $dataFile . '.backup';
     if (file_exists($dataFile)) {
         copy($dataFile, $backupFile);
     }
-    
-    // Escrever novo arquivo
+
     $bytesWritten = file_put_contents($dataFile, $json, LOCK_EX);
-    
+
     if ($bytesWritten === false) {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to write file']);
@@ -214,7 +274,7 @@ if ($method === 'POST') {
     chmod($dataFile, 0666);
 
     http_response_code(200);
-    echo json_encode(['success' => true, 'saved' => true, 'timestamp' => $data['updatedAt']]);
+    echo json_encode(['success' => true, 'saved' => true, 'source' => 'json-fallback', 'timestamp' => $data['updatedAt']]);
     exit;
 }
 

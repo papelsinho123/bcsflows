@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+$allowJsonFallback = getenv('BCS_ALLOW_JSON_FALLBACK') === '1' || getenv('BCS_ALLOW_JSON_FALLBACK') === 'true';
 require_once __DIR__ . '/db.php';
 
 $dataFile = __DIR__ . '/app_data.json';
@@ -45,7 +46,7 @@ if ($method === 'GET') {
 
         if ($row && !empty($row['payload'])) {
             $decoded = json_decode($row['payload'], true);
-            echo json_encode(['payload' => $decoded ?: null]);
+            echo json_encode(['payload' => $decoded ?: null, 'source' => 'database']);
             $conn->close();
             exit;
         }
@@ -55,7 +56,13 @@ if ($method === 'GET') {
         }
     }
 
-    echo json_encode(['payload' => $readJsonSnapshot() ?: null]);
+    if (!$allowJsonFallback) {
+        http_response_code(503);
+        echo json_encode(['error' => 'Banco de dados indisponível para leitura. Configure BCS_DB_HOST, BCS_DB_USER, BCS_DB_PASS e BCS_DB_NAME.']);
+        exit;
+    }
+
+    echo json_encode(['payload' => $readJsonSnapshot() ?: null, 'source' => 'json-fallback']);
     exit;
 }
 
@@ -96,9 +103,15 @@ if ($conn) {
     $conn->close();
 
     if ($ok) {
-        echo json_encode(['success' => true, 'saved' => true]);
+        echo json_encode(['success' => true, 'saved' => true, 'source' => 'database']);
         exit;
     }
+}
+
+if (!$allowJsonFallback) {
+    http_response_code(503);
+    echo json_encode(['error' => 'Não foi possível salvar no banco. Os dados não foram aceitos como sincronizados.']);
+    exit;
 }
 
 if ($writeJsonSnapshot($data)) {

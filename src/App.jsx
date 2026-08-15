@@ -189,6 +189,7 @@ function App() {
   const [eventBoardResetKey, setEventBoardResetKey] = useState(0);
   const [loginForm, setLoginForm] = useState({ usuario: '', password: '' });
   const [error, setError] = useState('');
+  const [syncStatus, setSyncStatus] = useState({ ok: true, message: 'Sincronização ativa com o banco de dados.' });
   const [theme, setTheme] = useState(() => localStorage.getItem('bcs_flows_theme') || 'light');
   const [motivationalPhrase, setMotivationalPhrase] = useState({ frase: '', autor: 'BCS Flows' });
   const [showLoginVideo, setShowLoginVideo] = useState(false);
@@ -265,7 +266,15 @@ function App() {
 
     writeLocalData(data);
     (async () => {
-      await saveToServer(data);
+      const saved = await saveToServer(data);
+      if (saved) {
+        setSyncStatus({ ok: true, message: 'Sincronização ativa com o banco de dados.' });
+      } else {
+        setSyncStatus({
+          ok: false,
+          message: 'Sincronização com o banco indisponível. Os dados locais ficam protegidos no cache do navegador até o servidor voltar.',
+        });
+      }
     })();
   }, [data]);
 
@@ -439,6 +448,11 @@ function App() {
         </nav>
 
         <main>
+          {!syncStatus.ok && (
+            <div className="mb-4 rounded-3xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 shadow-sm">
+              {syncStatus.message}
+            </div>
+          )}
           {route === 'events' && (
             <Suspense fallback={<div className="neumorphic-card p-8 text-center text-slate-600">Carregando painel de eventos...</div>}>
               <EventBoard
