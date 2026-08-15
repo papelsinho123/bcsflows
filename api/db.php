@@ -1,16 +1,26 @@
 <?php
-// db.php - NÃO comitar este arquivo no GitHub. Edite direto no servidor.
-// Preencha os placeholders abaixo com os dados do painel da Locaweb.
+// db.php
+// Mantém compatibilidade com banco real, mas não quebra a aplicação quando
+// as credenciais ainda não foram informadas no ambiente local/servidor.
 
-$db_host = 'localhost';      // geralmente localhost na Locaweb
-$db_user = 'SEU_USUARIO_DB';
-$db_pass = 'SUA_SENHA_DB';
-$db_name = 'SEU_NOME_BANCO';
+$db_host = getenv('BCS_DB_HOST') ?: 'localhost';
+$db_user = getenv('BCS_DB_USER') ?: 'root';
+$db_pass = getenv('BCS_DB_PASS') ?: '';
+$db_name = getenv('BCS_DB_NAME') ?: 'bcs_flows';
 
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($conn->connect_error) {
-  http_response_code(500);
-  echo json_encode(['error' => 'DB connection failed']);
-  exit;
+$conn = null;
+
+// Se o arquivo ainda estiver com os placeholders do exemplo, não derruba a API.
+$hasPlaceholderConfig = strpos($db_user, 'SEU_') !== false || strpos($db_name, 'SEU_') !== false || strpos($db_pass, 'SUA_') !== false;
+
+if (!$hasPlaceholderConfig) {
+  $conn = @new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+  if ($conn && $conn->connect_error) {
+    $conn = null;
+  }
 }
-$conn->set_charset('utf8mb4');
+
+if ($conn) {
+  $conn->set_charset('utf8mb4');
+}
