@@ -42,7 +42,7 @@ jobs:
           if [ -f .htaccess ]; then
             cp .htaccess deploy/.htaccess
           fi
-          ls -la deploy
+          find deploy -maxdepth 2 -print | sort
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.0
