@@ -258,6 +258,34 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return getEventTransferDateRange(targetEvent);
   }, [events, transferForm.targetEventId]);
 
+  const handleXlsxUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportStatus('Importando planilha...');
+    setImportErrors([]);
+
+    try {
+      const rows = await parseXlsxFile(file);
+      const importedEvents = buildImportedEvents(rows);
+      if (!importedEvents.length) {
+        setImportStatus('Nenhum evento encontrado na planilha. Verifique os cabeçalhos.');
+        return;
+      }
+      onEventsChange([...events, ...importedEvents]);
+      setActiveEventId(importedEvents[0].id);
+      setShowEventSelector(false);
+      setImportStatus(`Importados ${importedEvents.length} evento(s) com ${rows.length} linha(s).`);
+    } catch (error) {
+      setImportStatus('Erro ao importar a planilha. Veja o console para detalhes.');
+      setImportErrors([String(error)]);
+      // eslint-disable-next-line no-console
+      console.error('Importação XLSX falhou', error);
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   function renderEventSelector() {
     return (
       <div className="space-y-6">
@@ -655,34 +683,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
         },
       };
     });
-  };
-
-  const handleXlsxUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImportStatus('Importando planilha...');
-    setImportErrors([]);
-
-    try {
-      const rows = await parseXlsxFile(file);
-      const importedEvents = buildImportedEvents(rows);
-      if (!importedEvents.length) {
-        setImportStatus('Nenhum evento encontrado na planilha. Verifique os cabeçalhos.');
-        return;
-      }
-      onEventsChange([...events, ...importedEvents]);
-      setActiveEventId(importedEvents[0].id);
-      setShowEventSelector(false);
-      setImportStatus(`Importados ${importedEvents.length} evento(s) com ${rows.length} linha(s).`);
-    } catch (error) {
-      setImportStatus('Erro ao importar a planilha. Veja o console para detalhes.');
-      setImportErrors([String(error)]);
-      // eslint-disable-next-line no-console
-      console.error('Importação XLSX falhou', error);
-    } finally {
-      event.target.value = '';
-    }
   };
 
   const normalizeExtraInfoMessages = (value) => {

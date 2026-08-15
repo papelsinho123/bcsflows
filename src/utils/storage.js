@@ -101,20 +101,34 @@ export const saveToServer = async (data) => {
 };
 
 // Sincronizar com servidor (trazer dados mais novos)
+export const mergeAppData = (localData = {}, remoteData = {}) => {
+  const local = localData && typeof localData === 'object' ? localData : {};
+  const remote = remoteData && typeof remoteData === 'object' ? remoteData : {};
+
+  const localStamp = Number(local?.updatedAt || 0);
+  const remoteStamp = Number(remote?.updatedAt || 0);
+
+  if (!localStamp && !remoteStamp) {
+    return { ...local, ...remote };
+  }
+
+  if (remoteStamp > localStamp) {
+    return { ...local, ...remote, updatedAt: remoteStamp };
+  }
+
+  return local;
+};
+
 export const syncWithServer = async (currentData) => {
   const serverData = await loadServerData();
   if (!serverData) return currentData;
 
-  const localStamp = Number(currentData?.updatedAt || 0);
-  const serverStamp = Number(serverData?.updatedAt || 0);
-
-  // Se servidor tem dados mais novos, usar servidor
-  if (serverStamp > localStamp) {
-    log(`🔄 Servidor tem dados mais novos (${serverStamp} > ${localStamp})`);
-    return { ...currentData, ...serverData, updatedAt: serverStamp };
+  const merged = mergeAppData(currentData, serverData);
+  if (JSON.stringify(merged) === JSON.stringify(currentData)) {
+    return currentData;
   }
 
-  return currentData;
+  return merged;
 };
 
 // Usar apenas para migração, não para estado inicial
