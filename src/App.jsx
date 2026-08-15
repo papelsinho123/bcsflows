@@ -144,6 +144,42 @@ const parseCsvRows = (csvText) => {
   return rows.filter((row) => row.frase && row.autor);
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+          <div className="max-w-md text-center">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Erro ao carregar</h1>
+            <p className="text-slate-600 mb-6">{this.state.error?.message || 'Ocorreu um erro inesperado na aplicação.'}</p>
+            <button
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              onClick={() => window.location.reload()}
+            >
+              Recarregar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function BCSGlassLogo({ className = '' }) {
   const logoId = React.useId().replace(/:/g, '');
 
@@ -175,7 +211,15 @@ function BCSGlassLogo({ className = '' }) {
   );
 }
 
-export default function App() {
+export default function AppWrapper() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+function App() {
   const [data, setData] = useState(initialData);
   const [user, setUser] = useState(null);
   const [route, setRoute] = useState('events');
@@ -474,6 +518,16 @@ export default function App() {
           )}
           {route === 'inventory' && <InventoryModule inventory={data.inventory} events={data.events} onUpdateInventory={updateInventory} itemTypes={data.config.itemTypes} currentUser={user} />}
           {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} />}
+          {!['events', 'dashboard', 'finance', 'calendar', 'inventory', 'settings'].includes(route) && (
+            <div className="p-6 text-center text-slate-600">
+              <p>Página não encontrada. Rota inválida: {route}</p>
+            </div>
+          )}
+          {route === 'settings' && !canAccessSettings && (
+            <div className="p-6 text-center text-slate-600">
+              <p>Você não tem permissão para acessar as configurações.</p>
+            </div>
+          )}
         </main>
 
         <footer className="pb-4 pt-2 text-center text-sm text-slate-500">
