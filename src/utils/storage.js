@@ -62,6 +62,12 @@ export const loadServerData = async () => {
     }
   }
 
+  const localFallback = readLocalData(null);
+  if (localFallback) {
+    log('⚠️ Nenhum servidor respondeu; usando dados locais em cache.');
+    return localFallback;
+  }
+
   log('⚠️ Nenhum servidor respondeu');
   return null;
 };
@@ -72,6 +78,7 @@ export const saveToServer = async (data) => {
   const endpoints = [`${base}/sync-simple.php`, `${base}/sync.php`];
 
   const snapshot = withTimestamp(data);
+  writeLocalData(snapshot);
 
   for (const endpoint of endpoints) {
     try {

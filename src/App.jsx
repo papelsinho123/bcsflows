@@ -9,7 +9,7 @@ import { getDailyPhrase } from './utils/dailyPhrase.js';
 
 const EventBoard = React.lazy(() => import('./components/EventBoard.jsx'));
 import { canManageAdminFeatures, findUserByCredentials, normalizeUserRole } from './utils/auth.js';
-import { isSameData, loadServerData, saveToServer, syncWithServer } from './utils/storage.js';
+import { isSameData, loadServerData, readLocalData, saveToServer, syncWithServer, writeLocalData } from './utils/storage.js';
 import './index.css';
 
 const initialData = {
@@ -206,17 +206,12 @@ function App() {
 
     // Carregar dados do servidor na inicialização
     const hydrateData = async () => {
+      const localFallback = readLocalData(initialData);
       const serverData = await loadServerData();
       if (!isMounted) return;
 
-      if (serverData) {
-        const nextState = normalizeData(serverData);
-        setData(nextState);
-      } else {
-        // Fallback para initialData se servidor não responde
-        const nextState = normalizeData(initialData);
-        setData(nextState);
-      }
+      const nextState = normalizeData(serverData || localFallback || initialData);
+      setData(nextState);
     };
 
     hydrateData();
@@ -267,7 +262,8 @@ function App() {
   // Salvar no servidor IMEDIATAMENTE quando dados mudam
   useEffect(() => {
     if (!data) return;
-    
+
+    writeLocalData(data);
     (async () => {
       await saveToServer(data);
     })();

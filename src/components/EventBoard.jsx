@@ -122,6 +122,36 @@ function getDefaultEventForm() {
   };
 }
 
+const ensureBoardList = (boards, key) => {
+  const value = boards?.[key];
+  return Array.isArray(value) ? value : [];
+};
+
+const normalizeEventBoards = (boards = {}) => ({
+  info: boards?.info && typeof boards.info === 'object' ? boards.info : {},
+  montagem: ensureBoardList(boards, 'montagem'),
+  desmontagem: ensureBoardList(boards, 'desmontagem'),
+  hospedagem: ensureBoardList(boards, 'hospedagem'),
+  deslocamento: ensureBoardList(boards, 'deslocamento'),
+  separar: ensureBoardList(boards, 'separar'),
+});
+
+const normalizeEventEntry = (event) => {
+  if (!event || typeof event !== 'object') return null;
+
+  const safeBoards = normalizeEventBoards(event.boards);
+
+  return {
+    ...event,
+    users: Array.isArray(event.users) ? event.users : [],
+    userAssignments: Array.isArray(event.userAssignments) ? event.userAssignments : [],
+    accommodations: Array.isArray(event.accommodations) ? event.accommodations : [],
+    transfers: Array.isArray(event.transfers) ? event.transfers : [],
+    externalRentalInfo: event.externalRentalInfo || { company: '', deliveryDate: '', returnDate: '' },
+    boards: safeBoards,
+  };
+};
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -175,7 +205,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       // ignore
     }
   }, []);
-  const [activeEventId, setActiveEventId] = useState((Array.isArray(events) ? events : [])[0]?.id || null);
+  const safeEvents = Array.isArray(events) ? events.map(normalizeEventEntry).filter(Boolean) : [];
+  const [activeEventId, setActiveEventId] = useState(safeEvents[0]?.id || null);
   const [form, setForm] = useState(getDefaultEventForm());
   const [showCompletedEvents, setShowCompletedEvents] = useState(false);
   const [newMontagemItem, setNewMontagemItem] = useState({ itemType: '', sector: 'SECRETARIA', customSector: '', quantity: 1, mountDate: '' });
@@ -233,7 +264,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const canManageEvents = canManageAdminFeatures(user?.role || '');
   const canTransferItems = canManageAdminFeatures(user?.role || '');
 
-  const safeEvents = Array.isArray(events) ? events : [];
   const visibleEventList = canManageEvents
     ? safeEvents
     : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => userId === user?.id));
@@ -253,9 +283,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return users.filter((user) => ids.has(user.id));
   }, [selectedEvent, users]);
   const targetTransferDateRange = useMemo(() => {
-    const targetEvent = events.find((event) => String(event.id) === String(transferForm.targetEventId));
+    const targetEvent = safeEvents.find((event) => String(event.id) === String(transferForm.targetEventId));
     return getEventTransferDateRange(targetEvent);
-  }, [events, transferForm.targetEventId]);
+  }, [safeEvents, transferForm.targetEventId]);
 
   const handleXlsxUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -271,7 +301,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
         setImportStatus('Nenhum evento encontrado na planilha. Verifique os cabeçalhos.');
         return;
       }
-      onEventsChange([...events, ...importedEvents]);
+      onEventsChange([...safeEvents, ...importedEvents]);
       setActiveEventId(importedEvents[0].id);
       setShowEventSelector(false);
       setImportStatus(`Importados ${importedEvents.length} evento(s) com ${rows.length} linha(s).`);
@@ -527,7 +557,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     };
 
     if (editingEventId) {
-      const existingEvent = events.find((event) => event.id === editingEventId);
+      const existingEvent = safeEvents.find((event) => event.id === editingEventId);
       if (!existingEvent) return;
 
       const updatedEvent = {
@@ -583,11 +613,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     setExpandedBoard([]);
   };
 
-  const updateEvent = (updated) => onEventsChange(events.map((item) => (item.id === updated.id ? updated : item)));
-
-  if (!selectedEvent) {
-    return renderEventSelector();
-  }
+  const updateEvent = (updated) => onEventsChange(safeEvents.map((item) => (item.id === updated.id ? updated : item)));
 
   const normalizeHeaderKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
 
@@ -893,7 +919,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     updateEvent({ ...event, status: 'A Iniciar' });
   };
 
-  const removeEvent = (eventId) => onEventsChange(events.filter((item) => item.id !== eventId));
+  const removeEvent = (eventId) => onEventsChange(safeEvents.filter((item) => item.id !== eventId));
 
   const changeBoardItem = (event, boardKey, itemId, nextFields) => {
     if (event.status === 'Concluído') return;
@@ -1050,7 +1076,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const updateTransferEquipment = (itemId, updates) => {
     if (!selectedEvent) return;
 
-    const originEvent = events.find((event) => event.id === selectedEvent.id);
+    const originEvent = safeEvents.find((event) => event.id === selectedEvent.id);
     const originItem = (originEvent?.boards?.separar || []).find((item) => item.id === itemId);
     if (!originItem?.transferReference) return;
 
@@ -1059,7 +1085,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const formattedDate = getTransferDateLabel(updatedDate);
     const targetEventName = originItem.transferTargetEventName || '';
 
-    const nextEvents = events.map((event) => {
+    const nextEvents = safeEvents.map((event) => {
       if (event.id === originEvent.id) {
         const nextSeparation = (event.boards?.separar || []).map((entry) => {
           if (entry.id !== itemId) return entry;
@@ -1132,11 +1158,11 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const cancelTransferEquipment = (itemId) => {
     if (!selectedEvent) return;
 
-    const originEvent = events.find((event) => event.id === selectedEvent.id);
+    const originEvent = safeEvents.find((event) => event.id === selectedEvent.id);
     const originItem = (originEvent?.boards?.separar || []).find((item) => item.id === itemId);
     if (!originItem?.transferReference) return;
 
-    const nextEvents = events.map((event) => {
+    const nextEvents = safeEvents.map((event) => {
       if (event.id === originEvent.id) {
         const nextSeparation = (event.boards?.separar || []).map((entry) => {
           if (entry.id !== itemId) return entry;
@@ -1194,7 +1220,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const qty = Math.max(1, Number(rentalForm.quantity) || 1);
     if (!company || !selId || qty < 1) return;
 
-    const originEvent = events.find((e) => e.id === selectedEvent.id);
+    const originEvent = safeEvents.find((e) => e.id === selectedEvent.id);
     if (!originEvent) return;
 
     const item = (originEvent.boards?.separar || []).find((it) => String(it.id) === String(selId));
@@ -1222,7 +1248,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       observation,
     };
 
-    const nextEvents = events.map((ev) => {
+    const nextEvents = safeEvents.map((ev) => {
       if (ev.id !== originEvent.id) return ev;
       const nextSeparation = (ev.boards?.separar || []).map((entry) => {
         if (String(entry.id) !== String(item.id)) return entry;
@@ -1240,9 +1266,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const cancelExternalRental = (itemId, rentalId) => {
     if (!selectedEvent) return;
-    const originEvent = events.find((e) => e.id === selectedEvent.id);
+    const originEvent = safeEvents.find((e) => e.id === selectedEvent.id);
     if (!originEvent) return;
-    const nextEvents = events.map((ev) => {
+    const nextEvents = safeEvents.map((ev) => {
       if (ev.id !== originEvent.id) return ev;
       const nextSeparation = (ev.boards?.separar || []).map((entry) => {
         if (String(entry.id) !== String(itemId)) return entry;
@@ -1260,8 +1286,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const transferQuantity = Number(transferForm.transferQuantity) || 1;
     if (transferQuantity < 1) return;
 
-    const originEvent = events.find((event) => String(event.id) === String(activeEventId)) || selectedEvent;
-    const targetEvent = events.find((event) => String(event.id) === String(transferForm.targetEventId));
+    const originEvent = safeEvents.find((event) => String(event.id) === String(activeEventId)) || selectedEvent;
+    const targetEvent = safeEvents.find((event) => String(event.id) === String(transferForm.targetEventId));
     if (!targetEvent || !originEvent || targetEvent.id === originEvent.id) return;
 
     const targetRange = getEventTransferDateRange(targetEvent);
@@ -1359,7 +1385,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
     const updatedTargetBoards = { ...targetEvent.boards, separar: targetSeparation };
 
-    const nextEvents = events.map((event) => {
+    const nextEvents = safeEvents.map((event) => {
       if (event.id === originEvent.id) {
         return { ...event, boards: updatedOriginBoards, transfers: [...(event.transfers || []), transferEntry] };
       }
@@ -1834,8 +1860,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     return itensSeparation;
   };
 
-  const currentEvents = events.filter((item) => item.status !== 'Concluído');
-  const completedEvents = events.filter((item) => item.status === 'Concluído');
+  const currentEvents = safeEvents.filter((item) => item.status !== 'Concluído');
+  const completedEvents = safeEvents.filter((item) => item.status === 'Concluído');
   const visibleEvents = canManageEvents
     ? currentEvents
     : currentEvents.filter((item) => item.users?.some((userId) => userId === user.id));
@@ -1974,9 +2000,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const deleteEvent = (eventId) => {
-    onEventsChange(events.filter((item) => item.id !== eventId));
+    onEventsChange(safeEvents.filter((item) => item.id !== eventId));
     if (activeEventId === eventId) {
-      const remainingEvents = events.filter((item) => item.id !== eventId);
+      const remainingEvents = safeEvents.filter((item) => item.id !== eventId);
       setActiveEventId(remainingEvents[0]?.id || null);
     }
     setPendingAction(null);
@@ -1994,7 +2020,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       return start && end ? [start.getTime(), end.getTime()] : null;
     };
 
-    const activeEvents = events.filter((event) => event.status !== 'Concluído');
+    const activeEvents = safeEvents.filter((event) => event.status !== 'Concluído');
     const typeInventory = inventory.reduce((acc, item) => {
       if (!item.type) return acc;
       acc[item.type] = (acc[item.type] || 0) + Number(item.quantity || 0);
@@ -3116,14 +3142,14 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                 <input type="number" min="1" className="neumorphic-input w-full" placeholder="Qtd a transferir" value={transferForm.transferQuantity} onChange={(e) => setTransferForm((prev) => ({ ...prev, transferQuantity: Number(e.target.value) || 1 }))} />
                                 <select className="neumorphic-select w-full" value={transferForm.targetEventId} onChange={(e) => {
                                   const nextTargetEventId = e.target.value;
-                                  const nextTargetEvent = events.find((event) => String(event.id) === String(nextTargetEventId));
+                                  const nextTargetEvent = safeEvents.find((event) => String(event.id) === String(nextTargetEventId));
                                   const nextTransferDate = transferForm.transferDate && isDateWithinEventTransferRange(transferForm.transferDate, nextTargetEvent)
                                     ? transferForm.transferDate
                                     : '';
                                   setTransferForm((prev) => ({ ...prev, targetEventId: nextTargetEventId, transferDate: nextTransferDate }));
                                 }}>
                                   <option value="">Selecione o evento destino</option>
-                                  {events.filter((event) => event.id !== selectedEvent.id && event.status !== 'Concluído').map((event) => (
+                                  {safeEvents.filter((event) => event.id !== selectedEvent.id && event.status !== 'Concluído').map((event) => (
                                     <option key={event.id} value={event.id}>{event.name}</option>
                                   ))}
                                 </select>
@@ -3143,7 +3169,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   )}
                                 </div>
                               )}
-                              <button className="neumorphic-button outline w-full flex items-center justify-center gap-2" title="Transferir equipamento" onClick={transferEquipment} disabled={transferForm.targetEventId && transferForm.transferDate && !isDateWithinEventTransferRange(transferForm.transferDate, events.find((event) => String(event.id) === String(transferForm.targetEventId)))}><ExternalLink className="h-4 w-4" />Transferir equipamento</button>
+                              <button className="neumorphic-button outline w-full flex items-center justify-center gap-2" title="Transferir equipamento" onClick={transferEquipment} disabled={transferForm.targetEventId && transferForm.transferDate && !isDateWithinEventTransferRange(transferForm.transferDate, safeEvents.find((event) => String(event.id) === String(transferForm.targetEventId)))}><ExternalLink className="h-4 w-4" />Transferir equipamento</button>
                             </div>
                           )}
                           {showRentalPanel && (

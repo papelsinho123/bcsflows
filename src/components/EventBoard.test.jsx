@@ -16,4 +16,39 @@ describe('EventBoard', () => {
       />
     )).not.toThrow();
   });
+
+  it('ignores malformed legacy events that do not have a valid boards structure', () => {
+    expect(() => renderToStaticMarkup(
+      <EventBoard
+        events={[null, undefined, { id: 1, name: 'Evento Legacy', status: 'A Iniciar', departureDate: '2026-08-10', returnDate: '2026-08-15' }, 'bad-entry']}
+        inventory={[]}
+        config={{ itemTypes: [], proposalItemTypes: [], defaultItems: [] }}
+        users={[]}
+        user={{ id: 1, role: 'admin', name: 'Admin' }}
+        onEventsChange={() => {}}
+      />
+    )).not.toThrow();
+  });
+
+  it('renders a valid event even when board arrays are missing or empty', () => {
+    expect(() => renderToStaticMarkup(
+      <EventBoard
+        events={[{
+          id: 42,
+          name: 'Evento sem boards',
+          status: 'A Iniciar',
+          departureDate: '2026-08-10',
+          returnDate: '2026-08-15',
+          users: [],
+          userAssignments: [],
+          boards: {},
+        }]}
+        inventory={[]}
+        config={{ itemTypes: ['NOTEBOOK'], proposalItemTypes: [], defaultItems: [] }}
+        users={[]}
+        user={{ id: 1, role: 'admin', name: 'Admin' }}
+        onEventsChange={() => {}}
+      />
+    )).not.toThrow();
+  });
 });
