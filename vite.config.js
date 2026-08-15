@@ -168,7 +168,7 @@ const syncMiddleware = (req, res, next) => {
 };
 
 export default defineConfig({
-  base: '/bcsflows/',
+  base: './',
   plugins: [react()],
   server: {
     port: 4173,
