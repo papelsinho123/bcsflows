@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
 import NeumorphicCard from './NeumorphicCard.jsx';
 import { Pencil, Trash2, CheckCircle2, FileText, MessageCircle, PlusCircle, ChevronDown, ExternalLink, MoreHorizontal, ArrowRight } from 'lucide-react';
 import { generateSeparationPdf, generateEventChecklistPdf, generateMountedItemsPdf } from '../utils/pdfGenerator.js';
@@ -592,7 +591,37 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const normalizeHeaderKey = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
 
+  const loadXlsxLibrary = () => new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && window.XLSX) {
+      resolve(window.XLSX);
+      return;
+    }
+
+    const existingScript = document.querySelector('script[data-xlsx-loader="true"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(window.XLSX), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Não foi possível carregar o XLSX do navegador.')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.async = true;
+    script.setAttribute('data-xlsx-loader', 'true');
+    script.onload = () => {
+      if (window.XLSX) {
+        resolve(window.XLSX);
+        return;
+      }
+      reject(new Error('XLSX não inicializou no navegador.'));
+    };
+    script.onerror = () => reject(new Error('Não foi possível carregar o parser da planilha.'));
+    document.head.appendChild(script);
+  });
+
   const parseXlsxFile = async (file) => {
+    const XLSX = await loadXlsxLibrary();
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
