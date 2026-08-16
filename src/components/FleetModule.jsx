@@ -92,6 +92,31 @@ export const buildFleetReport = (vehicle = {}) => {
   return lines.join('\n');
 };
 
+export const finalizeScheduledMaintenance = (vehicles = [], vehicleId) => {
+  const targetId = String(vehicleId);
+  return vehicles.map((vehicle) => {
+    if (String(vehicle.id) !== targetId || !vehicle.scheduledMaintenance) return vehicle;
+
+    const scheduled = vehicle.scheduledMaintenance;
+    const completedEntry = {
+      id: `maintenance-confirmed-${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      type: scheduled.type || 'Manutenção',
+      description: `Manutenção programada confirmada como realizada${scheduled.location ? ` em ${scheduled.location}` : ''}`,
+      cost: 0,
+      location: scheduled.location || 'Local não informado',
+      receipt: '',
+      receiptName: '',
+    };
+
+    return normalizeFleetVehicle({
+      ...vehicle,
+      scheduledMaintenance: null,
+      maintenanceHistory: [...(vehicle.maintenanceHistory || []), completedEntry],
+    });
+  });
+};
+
 export default function FleetModule({ config = {}, onUpdateConfig = () => {}, currentUser, events = [] }) {
   const safeConfig = config || {};
   const vehicles = Array.isArray(safeConfig.fleetVehicles) ? safeConfig.fleetVehicles : [];
@@ -247,6 +272,12 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
     onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
   };
 
+  const confirmScheduledMaintenance = () => {
+    if (!activeVehicle || !activeVehicle.scheduledMaintenance) return;
+    const nextVehicles = finalizeScheduledMaintenance(vehicles, activeVehicle.id);
+    onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
+  };
+
   const addMaintenance = () => {
     if (!activeVehicle) {
       window.alert('Cadastre um veículo antes de registrar manutenção.');
@@ -337,6 +368,36 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
 
   return (
     <div className="space-y-6">
+      <NeumorphicCard>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold">Selecionar veículo</h3>
+          </div>
+          <div className="grid gap-2">
+            {vehicles.length === 0 ? (
+              <div className="text-sm text-slate-500">Nenhum veículo cadastrado.</div>
+            ) : (
+              vehicles.map((vehicle) => (
+                <button
+                  key={vehicle.id}
+                  type="button"
+                  className={`w-full rounded-3xl border p-3 text-left shadow-sm transition ${selectedVehicleId === vehicle.id || (!selectedVehicleId && activeVehicle?.id === vehicle.id) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white/80'}`}
+                  onClick={() => setSelectedVehicleId(vehicle.id)}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold">{vehicle.name}</div>
+                      <div className="text-xs text-slate-500">{vehicle.plate} • {vehicle.brand} {vehicle.model}</div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-700">{vehicle.status}</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </NeumorphicCard>
+
       {fleetAlerts.length > 0 && (
         <div className="rounded-3xl border border-rose-400 bg-rose-100 p-4 text-sm text-rose-900 shadow-sm">
           <div className="mb-2 font-semibold uppercase tracking-wide">Avisos de manutenção</div>
@@ -401,6 +462,7 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
                     <div>{activeVehicle.scheduledMaintenance.type}</div>
                     <div>{activeVehicle.scheduledMaintenance.location || 'Local não informado'}</div>
                     <div>{formatDatePtBR(activeVehicle.scheduledMaintenance.dueDate)}</div>
+                    <button className="neumorphic-button primary mt-2 px-3 py-1 text-[10px]" onClick={confirmScheduledMaintenance}>OK - realizada</button>
                   </div>
                 )}
                 {vehicleUsageDetails[activeVehicle.id] && (
@@ -428,6 +490,9 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <button className="neumorphic-button primary" onClick={saveScheduledMaintenance}>Salvar programação</button>
+                {activeVehicle?.scheduledMaintenance && (
+                  <button className="neumorphic-button secondary" onClick={confirmScheduledMaintenance}>OK - realizada</button>
+                )}
               </div>
             </div>
 
@@ -526,25 +591,6 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
           Nenhum veículo cadastrado.
         </div>
       )}
-
-      <div className="space-y-2">
-        {vehicles.map((vehicle) => (
-          <button
-            key={vehicle.id}
-            type="button"
-            className={`w-full rounded-3xl border p-3 text-left shadow-sm transition ${selectedVehicleId === vehicle.id || (!selectedVehicleId && activeVehicle?.id === vehicle.id) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white/80'}`}
-            onClick={() => setSelectedVehicleId(vehicle.id)}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="font-semibold">{vehicle.name}</div>
-                <div className="text-xs text-slate-500">{vehicle.plate} • {vehicle.brand} {vehicle.model}</div>
-              </div>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-700">{vehicle.status}</span>
-            </div>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

@@ -8,6 +8,17 @@ import { canManageAdminFeatures, normalizeUserRole } from '../utils/auth.js';
 
 const defaultBoardTitles = ['INFORMAÇÕES DO EVENTO', 'MONTAGEM DO EVENTO', 'SEPARAR ITENS PARA O EVENTO', 'HOSPEDAGEM', 'DESLOCAMENTO', 'DESMONTAGEM'];
 
+export const formatFleetVehicleLabel = (vehicle = {}) => {
+  const vehicleName = String(vehicle.name || '').trim();
+  const model = [vehicle.brand, vehicle.model].filter(Boolean).join(' ').trim();
+  const plate = String(vehicle.plate || '').trim();
+  const parts = [];
+  if (vehicleName) parts.push(vehicleName);
+  if (model) parts.push(model);
+  if (plate) parts.push(`(${plate})`);
+  return parts.join(' • ');
+};
+
 function formatPhoneUrl(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return '';
@@ -322,7 +333,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const vehicles = Array.isArray(config?.fleetVehicles) ? config.fleetVehicles : [];
     return vehicles.map((vehicle) => ({
       id: vehicle.id,
-      label: `${vehicle.name} (${vehicle.plate})`,
+      label: formatFleetVehicleLabel(vehicle),
       status: vehicle.status,
     }));
   }, [config]);
@@ -3112,18 +3123,20 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                       window.alert(`Este veículo já está em uso no evento ${assignment.eventName}${assignment.professionals.length ? ` com ${assignment.professionals.join(', ')}` : ''}.`);
                                       return;
                                     }
+                                    const vehicleDetails = isFleetSelection ? (config?.fleetVehicles || []).find((vehicle) => vehicle.id === selectedFleetVehicle.id) : null;
+                                    const formattedVehicleDetails = vehicleDetails ? formatFleetVehicleLabel(vehicleDetails) : selectedFleetVehicle?.label || 'Veículo da frota';
                                     const item = {
                                       id: `trans-${Date.now()}`,
                                       name: 'Transporte',
                                       type: 'DESLOCAMENTO',
                                       quantity: 1,
-                                      transportMode: isFleetSelection ? selectedFleetVehicle.label : newTransportMode,
+                                      transportMode: isFleetSelection ? formattedVehicleDetails : newTransportMode,
                                       vehicleId: isFleetSelection ? selectedFleetVehicle.id : '',
                                       departureDate: newTransportDepartureDate,
                                       returnDate: newTransportReturnDate,
                                       departureTime: newTransportDepartureTime,
                                       returnTime: newTransportReturnTime,
-                                      vehicleModel: isFleetSelection ? selectedFleetVehicle.label : newTransportVehicleModel,
+                                      vehicleModel: isFleetSelection ? formattedVehicleDetails : newTransportVehicleModel,
                                       reservationCode: newTransportReservationCode,
                                       passageCode: newTransportReservationCode,
                                       company: newTransportCompany,
@@ -3270,7 +3283,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                     {!isEditingTransportItem && (
                                       <div className="mt-2 space-y-1 text-sm text-slate-600">
                                         {item.vehicleId && fleetTransportOptions.some((vehicle) => vehicle.id === item.vehicleId) && (
-                                          <div>Veículo: {fleetTransportOptions.find((vehicle) => vehicle.id === item.vehicleId)?.label || item.vehicleModel}</div>
+                                          <div>Veículo: {(config?.fleetVehicles || []).find((vehicle) => vehicle.id === item.vehicleId) ? formatFleetVehicleLabel((config?.fleetVehicles || []).find((vehicle) => vehicle.id === item.vehicleId)) : fleetTransportOptions.find((vehicle) => vehicle.id === item.vehicleId)?.label || item.vehicleModel}</div>
                                         )}
                                         {!item.vehicleId && item.vehicleModel && <div>Modelo: {item.vehicleModel}</div>}
                                         {item.company && <div>EMPRESA: {item.company}</div>}

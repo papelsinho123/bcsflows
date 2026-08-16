@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFleetReport, formatDatePtBR, getFleetMaintenanceAlerts, normalizeFleetVehicle } from './FleetModule.jsx';
+import { buildFleetReport, finalizeScheduledMaintenance, formatDatePtBR, getFleetMaintenanceAlerts, normalizeFleetVehicle } from './FleetModule.jsx';
 
 describe('FleetModule', () => {
   it('normalizes vehicle data and preserves maintenance history', () => {
@@ -62,5 +62,24 @@ describe('FleetModule', () => {
     expect(alerts[0]).toContain('Van 02');
     expect(alerts[0]).toContain('Troca de óleo');
     expect(alerts[0]).toContain('Oficina Central');
+  });
+
+  it('removes a scheduled maintenance only after the operator confirms completion', () => {
+    const nextVehicles = finalizeScheduledMaintenance([
+      {
+        id: 'vehicle-1',
+        name: 'Caminhão 07',
+        plate: 'ABC-1111',
+        scheduledMaintenance: {
+          type: 'Troca de óleo',
+          dueDate: '2026-08-16',
+          location: 'Oficina Central',
+        },
+        maintenanceHistory: [],
+      },
+    ], 'vehicle-1');
+
+    expect(nextVehicles[0].scheduledMaintenance).toBeNull();
+    expect(nextVehicles[0].maintenanceHistory[0].type).toBe('Troca de óleo');
   });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import EventBoard from './EventBoard.jsx';
+import EventBoard, { formatFleetVehicleLabel } from './EventBoard.jsx';
 
 describe('EventBoard', () => {
   it('renders the event selector without crashing when there are no events', () => {
@@ -81,5 +81,21 @@ describe('EventBoard', () => {
     );
 
     expect(markup).toContain('ExpoShop 2026');
+  });
+
+  it('formats the selected fleet vehicle label with name, model and plate', () => {
+    const label = formatFleetVehicleLabel({
+      id: 'vehicle-1',
+      name: 'Van 02',
+      brand: 'Toyota',
+      model: 'Hilux',
+      plate: 'ABC-1234',
+      status: 'Ativo',
+    });
+
+    expect(label).toContain('Van 02');
+    expect(label).toContain('Toyota');
+    expect(label).toContain('Hilux');
+    expect(label).toContain('ABC-1234');
   });
 });
