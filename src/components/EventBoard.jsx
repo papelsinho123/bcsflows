@@ -835,6 +835,13 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       userAssignments: newEventUserAssignments,
       boards: initializeEventBoards(baseEventData, config.defaultItems || []),
     };
+    // DEBUG: Log dos profissionais sendo salvos
+    console.log('🔵 Criando evento com profissionais:', {
+      eventName: nextEvent.name,
+      profissionaisIds: newEventUsers,
+      profissionaisDatas: newEventUserAssignments,
+      usuariosDisponiveis: users.length,
+    });
     onEventsChange([...events, nextEvent]);
     setForm(getDefaultEventForm());
     setNewEventUsers([]);

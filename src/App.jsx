@@ -224,11 +224,22 @@ function App() {
       const serverData = await loadServerData();
       if (!serverData) return;
 
+      console.log('📡 Sincronizando do servidor:', serverData.events?.map(e => ({
+        id: e.id,
+        name: e.name,
+        usuariosCount: (e.users || []).length,
+      })));
+
       setData((prev) => {
         const mergedData = mergeAppData(prev, serverData);
         if (isSameData(prev, mergedData)) {
           return prev;
         }
+        console.log('🔄 Dados mesclados:', mergedData.events?.map(e => ({
+          id: e.id,
+          name: e.name,
+          usuariosCount: (e.users || []).length,
+        })));
         return mergedData;
       });
     }, 2000);
@@ -263,6 +274,13 @@ function App() {
   // Salvar no servidor IMEDIATAMENTE quando dados mudam
   useEffect(() => {
     if (!data) return;
+
+    console.log('📊 Dados atualizados - eventos com profissionais:', data.events?.map(e => ({
+      id: e.id,
+      name: e.name,
+      usuariosCount: (e.users || []).length,
+      assignmentsCount: (e.userAssignments || []).length,
+    })));
 
     writeLocalData(data);
     (async () => {
