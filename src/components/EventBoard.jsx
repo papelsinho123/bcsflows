@@ -250,7 +250,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const [newTransportVoucherData, setNewTransportVoucherData] = useState('');
   const [newTransportProfessionalIds, setNewTransportProfessionalIds] = useState([]);
   const [showEventForm, setShowEventForm] = useState(false);
-  const [expandedBoard, setExpandedBoard] = useState([]);
+  const [expandedBoard, setExpandedBoard] = useState(['INFORMAÇÕES DO EVENTO']);
   const [showEventSelector, setShowEventSelector] = useState(true);
   const [editingEventId, setEditingEventId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
@@ -435,11 +435,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   </div>
 
                                   {/* Endereço */}
-                                  {event.locationName && (
-                                    <div className="text-[11px] text-slate-500 border-l-2 border-slate-300 pl-1.5 py-0.5">
-                                      <span className="font-semibold text-slate-700">{event.locationName}</span>
-                                    </div>
-                                  )}
+                                  <div className="text-[11px] text-slate-500 border-l-2 border-slate-300 pl-1.5 py-0.5">
+                                    <span className="font-semibold text-slate-700">{event.locationName || 'Endereço não informado'}</span>
+                                  </div>
 
                                   {/* Datas importantes */}
                                   <div className="grid grid-cols-2 gap-1 text-[10px]">
@@ -454,23 +452,27 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   </div>
 
                                   {/* Profissionais do evento */}
-                                  {eventProfessionalsList.length > 0 && (
-                                    <div className="border-t border-slate-200 pt-1">
-                                      <div className="text-[10px] font-semibold text-slate-600 mb-0.5">Profissionais ({eventProfessionalsList.length})</div>
-                                      <div className="flex flex-wrap gap-0.5">
-                                        {eventProfessionalsList.slice(0, 2).map((prof) => (
-                                          <span key={prof.id} className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full">
-                                            {prof.name || prof.usuario}
-                                          </span>
-                                        ))}
-                                        {eventProfessionalsList.length > 2 && (
-                                          <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full">
-                                            +{eventProfessionalsList.length - 2}
-                                          </span>
-                                        )}
-                                      </div>
+                                  <div className="border-t border-slate-200 pt-1">
+                                    <div className="text-[10px] font-semibold text-slate-600 mb-0.5">Profissionais ({eventProfessionalsList.length})</div>
+                                    <div className="flex flex-wrap gap-0.5">
+                                      {eventProfessionalsList.length > 0 ? (
+                                        <>
+                                          {eventProfessionalsList.slice(0, 2).map((prof) => (
+                                            <span key={prof.id} className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full">
+                                              {prof.name || prof.usuario}
+                                            </span>
+                                          ))}
+                                          {eventProfessionalsList.length > 2 && (
+                                            <span className="text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full">
+                                              +{eventProfessionalsList.length - 2}
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="text-[9px] text-slate-500 italic">Nenhum profissional atribuído</span>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
                               </button>
                             );
@@ -529,11 +531,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   </div>
 
                                   {/* Endereço */}
-                                  {event.locationName && (
-                                    <div className="text-[11px] text-slate-600 border-l-2 border-emerald-300 pl-1.5 py-0.5">
-                                      <span className="font-semibold text-slate-700">{event.locationName}</span>
-                                    </div>
-                                  )}
+                                  <div className="text-[11px] text-slate-600 border-l-2 border-emerald-300 pl-1.5 py-0.5">
+                                    <span className="font-semibold text-slate-700">{event.locationName || 'Endereço não informado'}</span>
+                                  </div>
 
                                   {/* Datas importantes */}
                                   <div className="grid grid-cols-2 gap-1 text-[10px]">
@@ -548,23 +548,27 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                   </div>
 
                                   {/* Profissionais do evento */}
-                                  {eventProfessionalsList.length > 0 && (
-                                    <div className="border-t border-emerald-200 pt-1">
-                                      <div className="text-[10px] font-semibold text-emerald-700 mb-0.5">Profissionais ({eventProfessionalsList.length})</div>
-                                      <div className="flex flex-wrap gap-0.5">
-                                        {eventProfessionalsList.slice(0, 2).map((prof) => (
-                                          <span key={prof.id} className="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">
-                                            {prof.name || prof.usuario}
-                                          </span>
-                                        ))}
-                                        {eventProfessionalsList.length > 2 && (
-                                          <span className="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">
-                                            +{eventProfessionalsList.length - 2}
-                                          </span>
-                                        )}
-                                      </div>
+                                  <div className="border-t border-emerald-200 pt-1">
+                                    <div className="text-[10px] font-semibold text-emerald-700 mb-0.5">Profissionais ({eventProfessionalsList.length})</div>
+                                    <div className="flex flex-wrap gap-0.5">
+                                      {eventProfessionalsList.length > 0 ? (
+                                        <>
+                                          {eventProfessionalsList.slice(0, 2).map((prof) => (
+                                            <span key={prof.id} className="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">
+                                              {prof.name || prof.usuario}
+                                            </span>
+                                          ))}
+                                          {eventProfessionalsList.length > 2 && (
+                                            <span className="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">
+                                              +{eventProfessionalsList.length - 2}
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="text-[9px] text-emerald-600 italic">Nenhum profissional atribuído</span>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
                               </button>
                             );
