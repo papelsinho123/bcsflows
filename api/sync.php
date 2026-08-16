@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
+
 $allowJsonFallback = getenv('BCS_ALLOW_JSON_FALLBACK') === '1' || getenv('BCS_ALLOW_JSON_FALLBACK') === 'true';
 require_once __DIR__ . '/db.php';
 
@@ -80,6 +81,7 @@ if ($method !== 'POST') {
 
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
+
 if (!is_array($data)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid JSON body']);
@@ -113,10 +115,12 @@ if ($conn) {
 
 if (!$allowJsonFallback) {
     http_response_code(503);
-        echo json_encode([
-            'error' => 'Não foi possível salvar no banco.',
-            'details' => $db_error ?? 'Os dados não foram aceitos como sincronizados.'
-        ]);
+    echo json_encode([
+        'error' => 'Não foi possível salvar no banco.',
+        'details' => $db_error ?? 'Os dados não foram aceitos como sincronizados.'
+    ]);
+    exit;
+}
 
 if ($writeJsonSnapshot($data)) {
     echo json_encode(['success' => true, 'saved' => true, 'fallback' => 'json']);
