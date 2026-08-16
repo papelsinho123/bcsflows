@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
-import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText } from 'lucide-react';
+import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText, HelpCircle, X } from 'lucide-react';
 import InventoryModule from './components/InventoryModule.jsx';
 import SettingsModule from './components/SettingsModule.jsx';
 import DashboardModule from './components/DashboardModule.jsx';
@@ -194,6 +194,7 @@ function App() {
   const [motivationalPhrase, setMotivationalPhrase] = useState({ frase: '', autor: 'BCS Flows' });
   const [showLoginVideo, setShowLoginVideo] = useState(false);
   const [showLogoutVideo, setShowLogoutVideo] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const dataRef = useRef(data);
 
@@ -412,6 +413,37 @@ function App() {
   const canAccessSettings = isAdmin;
   const currentConfig = data?.config || initialData.config;
 
+  const usageManualSections = [
+    {
+      title: '1. Acesso e autenticação',
+      text: 'O sistema é acessado com usuário e senha. Após o login, a interface principal exibe os módulos de eventos, dashboard, calendário, financeiro, estoque e configurações.'
+    },
+    {
+      title: '2. Módulo de eventos',
+      text: 'Aqui você cadastra, edita e acompanha eventos. Cada item inclui dados do cliente, endereço, datas, profissionais e materiais necessários para a operação. O painel central mostra todas as informações essenciais em um só lugar.'
+    },
+    {
+      title: '3. Dashboard e acompanhamento',
+      text: 'O dashboard reúne indicadores rápidos do fluxo, como eventos ativos, pendências e informações operacionais. Ele funciona como visão geral para tomada de decisão e acompanhamento em tempo real.'
+    },
+    {
+      title: '4. Calendário',
+      text: 'O calendário organiza eventos por data e ajuda a visualizar períodos, deslocamentos e gestão de agenda. Ele facilita o controle da rotina e evita que atividades importantes passem despercebidas.'
+    },
+    {
+      title: '5. Financeiro e estoque',
+      text: 'No financeiro, os gastos e pagamentos do evento podem ser registrados e acompanhados. Já no estoque, você controla equipamentos, materiais e quantidades disponíveis, facilitando a logística do evento.'
+    },
+    {
+      title: '6. Configurações',
+      text: 'Neste módulo é possível ajustar tipos de itens, contatos, regras gerais e configurações próprias do sistema. O acesso fica restrito conforme o perfil do usuário.'
+    },
+    {
+      title: '7. Sincronização',
+      text: 'O sistema salva localmente e também sincroniza com o mesmo ponto de dados do site, mantendo os registros consistentes entre a web e o app. Isso reduz riscos de perda de informações e melhora a continuidade operacional.'
+    },
+  ];
+
   const visibleNav = [
     { id: 'events', label: 'Eventos', icon: Layers, private: false },
     { id: 'dashboard', label: 'Dashboard', icon: Activity, private: false },
@@ -437,7 +469,15 @@ function App() {
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
             <button
-              className="neumorphic-button h-12 w-12 rounded-full p-0 flex items-center justify-center"
+              className="neumorphic-button h-11 w-11 rounded-full p-0 flex items-center justify-center"
+              aria-label="Ajuda e manual de uso"
+              onClick={() => setShowHelpModal(true)}
+              title="Manual de uso"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            <button
+              className="neumorphic-button h-11 w-11 rounded-full p-0 flex items-center justify-center"
               aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
               onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
             >
@@ -570,6 +610,50 @@ function App() {
         </div>
       )}
 
+      {showHelpModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="help-modal-card w-full max-w-3xl rounded-[2rem] border border-white/20 bg-slate-950/80 p-6 text-slate-50 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-300">Manual de uso</p>
+                <h2 className="mt-2 text-2xl font-bold text-white">BCS Flows</h2>
+              </div>
+              <button
+                type="button"
+                className="neumorphic-button h-10 w-10 rounded-full p-0 flex items-center justify-center"
+                aria-label="Fechar manual"
+                onClick={() => setShowHelpModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="help-modal-body max-h-[70vh] space-y-5 overflow-y-auto pr-2">
+              <p className="text-sm leading-7 text-slate-200">
+                Este sistema foi pensado para organizar a operação de eventos, controlar materiais, acompanhar agenda, registrar finanças e manter a rotina de trabalho mais clara e eficiente.
+              </p>
+
+              {usageManualSections.map((section) => (
+                <section key={section.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <h3 className="text-base font-semibold text-white">{section.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">{section.text}</p>
+                </section>
+              ))}
+
+              <section className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                <h3 className="text-base font-semibold text-emerald-200">Dicas rápidas</h3>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-200">
+                  <li>Cadastre os dados do evento completo antes de iniciar a operação.</li>
+                  <li>Use o calendário para planejar a programação e evitar conflitos.</li>
+                  <li>Atualize o estoque sempre após entregas e devoluções.</li>
+                  <li>Sincronize os dados sempre que possível para manter a base consistente.</li>
+                </ul>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!user ? (
         <div className="flex min-h-screen flex-col items-center justify-center p-5 sm:p-8">
           <div className="login-stage">
@@ -585,13 +669,23 @@ function App() {
               />
               <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.28),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.08),rgba(15,23,42,0.72))]" />
 
-              <button
-                className="absolute top-4 right-4 z-20 neumorphic-button h-12 w-12 rounded-full p-0 flex-shrink-0 flex items-center justify-center"
-                aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
-                onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
-              >
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              </button>
+              <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                <button
+                  className="neumorphic-button h-11 w-11 rounded-full p-0 flex-shrink-0 flex items-center justify-center"
+                  aria-label="Abrir manual de uso"
+                  title="Manual de uso"
+                  onClick={() => setShowHelpModal(true)}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+                <button
+                  className="neumorphic-button h-11 w-11 rounded-full p-0 flex-shrink-0 flex items-center justify-center"
+                  aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                  onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+                >
+                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </button>
+              </div>
 
               <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10 z-10">
                 <div className="space-y-3">
