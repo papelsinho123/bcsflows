@@ -51,4 +51,35 @@ describe('EventBoard', () => {
       />
     )).not.toThrow();
   });
+
+  it('renders event names in the selector from the synced payload', () => {
+    const markup = renderToStaticMarkup(
+      <EventBoard
+        events={[{
+          id: 101,
+          name: 'ExpoShop 2026',
+          status: 'A Iniciar',
+          departureDate: '2026-08-20',
+          returnDate: '2026-08-24',
+          users: [],
+          userAssignments: [],
+          boards: {
+            info: {},
+            montagem: [],
+            desmontagem: [],
+            hospedagem: [],
+            deslocamento: [],
+            separar: [],
+          },
+        }]}
+        inventory={[]}
+        config={{ itemTypes: [], proposalItemTypes: [], defaultItems: [] }}
+        users={[]}
+        user={{ id: 1, role: 'master', name: 'Admin' }}
+        onEventsChange={() => {}}
+      />
+    );
+
+    expect(markup).toContain('ExpoShop 2026');
+  });
 });

@@ -274,6 +274,18 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     ? safeEvents
     : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => userId === user?.id));
 
+  useEffect(() => {
+    if (!safeEvents.length) {
+      setActiveEventId(null);
+      return;
+    }
+
+    const hasCurrentSelection = safeEvents.some((event) => String(event.id) === String(activeEventId));
+    if (!hasCurrentSelection) {
+      setActiveEventId(safeEvents[0].id);
+    }
+  }, [safeEvents, activeEventId]);
+
   const availableItemTypes = useMemo(() => [
     ...(config.itemTypes || []),
     ...(config.proposalItemTypes || []),
@@ -365,6 +377,31 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
               ))}
             </div>
           )}
+
+          {visibleEventList.length > 0 && (
+            <div className="mt-5 space-y-3">
+              {visibleEventList.map((event) => {
+                const isActive = String(event.id) === String(activeEventId);
+                return (
+                  <button
+                    key={event.id}
+                    type="button"
+                    className={`neumorphic-button w-full justify-between ${isActive ? 'primary' : 'secondary'}`}
+                    onClick={() => {
+                      setActiveEventId(event.id);
+                      setShowEventSelector(false);
+                    }}
+                  >
+                    <span className="truncate text-left font-semibold">{event.name || 'Evento sem nome'}</span>
+                    <span className="text-xs opacity-80">
+                      {event.departureDate || event.startDate || event.eventDate || 'Sem data'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {showEventForm && (
             <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <div className="mb-4 flex items-center justify-between">
