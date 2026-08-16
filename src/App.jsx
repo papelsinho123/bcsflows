@@ -419,11 +419,7 @@ function App() {
               aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
               onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
             >
-              {theme === 'dark' ? (
-                <img src={`${import.meta.env.BASE_URL || '/'}light.png`} alt="Tema claro" className="h-6 w-6" />
-              ) : (
-                <img src={`${import.meta.env.BASE_URL || '/'}dark.png`} alt="Tema escuro" className="h-6 w-6" />
-              )}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
             <span className="rounded-3xl bg-white/70 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm">
               {user?.name} • {currentRole === 'master' ? 'Master' : currentRole === 'admin' ? 'Administrador' : 'Usuário'}
@@ -572,11 +568,7 @@ function App() {
                 aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
                 onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
               >
-                {theme === 'dark' ? (
-                  <img src={`${import.meta.env.BASE_URL || '/'}light.png`} alt="Tema claro" className="h-6 w-6" />
-                ) : (
-                  <img src={`${import.meta.env.BASE_URL || '/'}dark.png`} alt="Tema escuro" className="h-6 w-6" />
-                )}
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
 
               <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10 z-10">

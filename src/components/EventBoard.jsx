@@ -2570,7 +2570,23 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                 >
                   <div className="space-y-3">
                     {title === 'INFORMAÇÕES DO EVENTO' && (
-                      <div className="space-y-2 text-sm text-slate-600">
+                      <div className="space-y-3 text-sm text-slate-600">
+                        {/* Profissionais em destaque */}
+                        {(selectedEvent.users || []).length > 0 && (
+                          <div className="rounded-3xl border-2 border-cyan-400 bg-cyan-50 p-4">
+                            <div className="font-bold text-cyan-900 mb-2">👥 Profissionais do Evento</div>
+                            <div className="flex flex-wrap gap-2">
+                              {(selectedEvent.users || [])
+                                .map((userId) => users.find((u) => u.id === userId))
+                                .filter(Boolean)
+                                .map((u) => (
+                                  <span key={u.id} className="inline-block rounded-full bg-cyan-200 text-cyan-900 px-3 py-1 text-xs font-semibold">
+                                    {u.name || u.usuario}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Cliente:</span> {selectedEvent.clientName || 'Não informado'}</p>
                           <p><span className="font-semibold">Responsável:</span> {selectedEvent.organizerName || 'Não informado'}</p>
