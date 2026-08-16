@@ -285,7 +285,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
   const visibleEventList = canManageEvents
     ? safeEvents
-    : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => userId === user?.id));
+    : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => String(userId) === String(user?.id)));
 
   useEffect(() => {
     // DEBUG: Verificar se users está sendo passado corretamente
@@ -326,8 +326,11 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const selectedEvent = visibleEventList.find((event) => event.id === activeEventId) || visibleEventList[0] || null;
   const eventProfessionals = useMemo(() => {
     if (!selectedEvent) return [];
-    const ids = new Set([...(selectedEvent.users || []), ...(selectedEvent.userAssignments?.map((assignment) => assignment.userId) || [])]);
-    return users.filter((user) => ids.has(user.id));
+    const ids = new Set([
+      ...(selectedEvent.users || []).map((userId) => String(userId)),
+      ...(selectedEvent.userAssignments?.map((assignment) => String(assignment.userId)) || []),
+    ]);
+    return users.filter((user) => ids.has(String(user.id)));
   }, [selectedEvent, users]);
   const fleetTransportOptions = useMemo(() => {
     const vehicles = Array.isArray(config?.fleetVehicles) ? config.fleetVehicles : [];

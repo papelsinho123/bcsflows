@@ -98,4 +98,39 @@ describe('EventBoard', () => {
     expect(label).toContain('Hilux');
     expect(label).toContain('ABC-1234');
   });
+
+  it('shows professionals when event user IDs arrive as strings', () => {
+    const markup = renderToStaticMarkup(
+      <EventBoard
+        events={[{
+          id: 303,
+          name: 'Evento com profissionais',
+          status: 'A Iniciar',
+          departureDate: '2026-08-20',
+          returnDate: '2026-08-24',
+          users: ['1', '2'],
+          userAssignments: [],
+          boards: {
+            info: {},
+            montagem: [],
+            desmontagem: [],
+            hospedagem: [],
+            deslocamento: [],
+            separar: [],
+          },
+        }]}
+        inventory={[]}
+        config={{ itemTypes: [], proposalItemTypes: [], defaultItems: [] }}
+        users={[
+          { id: 1, name: 'Ana', email: 'ana@email.com' },
+          { id: 2, name: 'Bruno', email: 'bruno@email.com' },
+        ]}
+        user={{ id: 1, role: 'admin', name: 'Admin' }}
+        onEventsChange={() => {}}
+      />
+    );
+
+    expect(markup).toContain('Ana');
+    expect(markup).toContain('Bruno');
+  });
 });
