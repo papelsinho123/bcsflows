@@ -45,6 +45,13 @@ function formatShortDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+function formatDateShort(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
 function formatAuditDateTime(value) {
   if (!value) return 'Sem data';
   const date = new Date(value);
@@ -391,26 +398,92 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                       <div className="grid gap-3 xl:grid-cols-2">
                         {eventsInMonth.map((event) => {
                           const isActive = String(event.id) === String(activeEventId);
+                          const eventProfessionalsList = users.filter((u) => (event.users || []).includes(u.id));
                           return (
                             <button
                               key={event.id}
                               type="button"
-                              className={`w-full rounded-3xl border p-4 text-left shadow-sm transition ${isActive ? 'border-cyan-300 bg-cyan-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                              className={`w-full rounded-3xl border transition ${isActive ? 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-cyan-100 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'}`}
                               onClick={() => handleSelectEvent(event.id)}
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <div className="text-lg font-semibold text-slate-900">{event.name || 'Evento sem nome'}</div>
-                                  <div className="mt-1 text-sm text-slate-600">{event.clientName || 'Cliente não informado'}</div>
+                              <div className="p-4 space-y-3">
+                                {/* Header com nome e status */}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-lg font-bold text-slate-900 truncate">{event.name || 'Evento sem nome'}</div>
+                                    <div className="text-sm text-slate-600 truncate">{event.clientName || 'Cliente não informado'}</div>
+                                  </div>
+                                  <span className={`flex-shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] whitespace-nowrap ${isActive ? 'bg-cyan-300 text-slate-900' : 'bg-slate-100 text-slate-600'}`}>
+                                    {event.status || 'A Iniciar'}
+                                  </span>
                                 </div>
-                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-                                  {event.status || 'A Iniciar'}
-                                </span>
-                              </div>
-                              <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                                <div><span className="font-semibold text-slate-700">Saída:</span> {formatShortDate(event.departureDate || event.startDate || event.eventDate)}</div>
-                                <div><span className="font-semibold text-slate-700">Retorno:</span> {formatShortDate(event.returnDate || event.endDate)}</div>
-                                <div className="sm:col-span-2"><span className="font-semibold text-slate-700">Local:</span> {event.locationName || 'Não informado'}</div>
+
+                                {/* Endereço */}
+                                {event.locationName && (
+                                  <div className="text-xs text-slate-500 border-l-2 border-slate-300 pl-2 py-1">
+                                    <span className="font-semibold text-slate-700">Local:</span> {event.locationName}
+                                  </div>
+                                )}
+                                {event.address && (
+                                  <div className="text-xs text-slate-500 border-l-2 border-slate-300 pl-2 py-1">
+                                    <span className="font-semibold text-slate-700">Endereço:</span> {event.address}
+                                  </div>
+                                )}
+
+                                {/* Datas importantes */}
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="bg-slate-50 rounded-lg p-2">
+                                    <div className="text-slate-500">Partida</div>
+                                    <div className="font-semibold text-slate-700">{formatShortDate(event.departureDate)}</div>
+                                  </div>
+                                  <div className="bg-slate-50 rounded-lg p-2">
+                                    <div className="text-slate-500">Retorno</div>
+                                    <div className="font-semibold text-slate-700">{formatShortDate(event.returnDate || event.endDate)}</div>
+                                  </div>
+                                  {event.caexMontageDate && (
+                                    <div className="bg-slate-50 rounded-lg p-2">
+                                      <div className="text-slate-500">Mont. CAEX</div>
+                                      <div className="font-semibold text-slate-700">{formatShortDate(event.caexMontageDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.secretariaMontageDate && (
+                                    <div className="bg-slate-50 rounded-lg p-2">
+                                      <div className="text-slate-500">Mont. Secret.</div>
+                                      <div className="font-semibold text-slate-700">{formatShortDate(event.secretariaMontageDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.startDate && (
+                                    <div className="bg-slate-50 rounded-lg p-2">
+                                      <div className="text-slate-500">Início</div>
+                                      <div className="font-semibold text-slate-700">{formatShortDate(event.startDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.endDate && (
+                                    <div className="bg-slate-50 rounded-lg p-2">
+                                      <div className="text-slate-500">Fim</div>
+                                      <div className="font-semibold text-slate-700">{formatShortDate(event.endDate)}</div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Profissionais do evento */}
+                                {eventProfessionalsList.length > 0 && (
+                                  <div className="border-t border-slate-200 pt-2">
+                                    <div className="text-xs font-semibold text-slate-600 mb-1">Profissionais ({eventProfessionalsList.length})</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {eventProfessionalsList.slice(0, 3).map((prof) => (
+                                        <span key={prof.id} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full">
+                                          {prof.name || prof.usuario}
+                                        </span>
+                                      ))}
+                                      {eventProfessionalsList.length > 3 && (
+                                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full">
+                                          +{eventProfessionalsList.length - 3}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </button>
                           );
@@ -430,29 +503,97 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         {monthLabel}
                       </div>
                       <div className="grid gap-3 xl:grid-cols-2">
-                        {eventsInMonth.map((event) => (
-                          <button
-                            key={`${event.id}-closed`}
-                            type="button"
-                            className="w-full rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-left shadow-sm transition hover:border-emerald-300"
-                            onClick={() => handleSelectEvent(event.id)}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-lg font-semibold text-slate-900">{event.name || 'Evento sem nome'}</div>
-                                <div className="mt-1 text-sm text-slate-600">{event.clientName || 'Cliente não informado'}</div>
+                        {eventsInMonth.map((event) => {
+                          const eventProfessionalsList = users.filter((u) => (event.users || []).includes(u.id));
+                          return (
+                            <button
+                              key={`${event.id}-closed`}
+                              type="button"
+                              className="w-full rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                              onClick={() => handleSelectEvent(event.id)}
+                            >
+                              <div className="space-y-3">
+                                {/* Header com nome e status */}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-lg font-bold text-slate-900 truncate">{event.name || 'Evento sem nome'}</div>
+                                    <div className="text-sm text-slate-600 truncate">{event.clientName || 'Cliente não informado'}</div>
+                                  </div>
+                                  <span className="flex-shrink-0 rounded-full bg-emerald-600 text-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] whitespace-nowrap">
+                                    Encerrado
+                                  </span>
+                                </div>
+
+                                {/* Endereço */}
+                                {event.locationName && (
+                                  <div className="text-xs text-slate-600 border-l-2 border-emerald-300 pl-2 py-1">
+                                    <span className="font-semibold text-slate-700">Local:</span> {event.locationName}
+                                  </div>
+                                )}
+                                {event.address && (
+                                  <div className="text-xs text-slate-600 border-l-2 border-emerald-300 pl-2 py-1">
+                                    <span className="font-semibold text-slate-700">Endereço:</span> {event.address}
+                                  </div>
+                                )}
+
+                                {/* Datas importantes */}
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="bg-emerald-100/50 rounded-lg p-2">
+                                    <div className="text-emerald-700">Partida</div>
+                                    <div className="font-semibold text-emerald-900">{formatShortDate(event.departureDate)}</div>
+                                  </div>
+                                  <div className="bg-emerald-100/50 rounded-lg p-2">
+                                    <div className="text-emerald-700">Retorno</div>
+                                    <div className="font-semibold text-emerald-900">{formatShortDate(event.returnDate || event.endDate)}</div>
+                                  </div>
+                                  {event.caexMontageDate && (
+                                    <div className="bg-emerald-100/50 rounded-lg p-2">
+                                      <div className="text-emerald-700">Mont. CAEX</div>
+                                      <div className="font-semibold text-emerald-900">{formatShortDate(event.caexMontageDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.secretariaMontageDate && (
+                                    <div className="bg-emerald-100/50 rounded-lg p-2">
+                                      <div className="text-emerald-700">Mont. Secret.</div>
+                                      <div className="font-semibold text-emerald-900">{formatShortDate(event.secretariaMontageDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.startDate && (
+                                    <div className="bg-emerald-100/50 rounded-lg p-2">
+                                      <div className="text-emerald-700">Início</div>
+                                      <div className="font-semibold text-emerald-900">{formatShortDate(event.startDate)}</div>
+                                    </div>
+                                  )}
+                                  {event.endDate && (
+                                    <div className="bg-emerald-100/50 rounded-lg p-2">
+                                      <div className="text-emerald-700">Fim</div>
+                                      <div className="font-semibold text-emerald-900">{formatShortDate(event.endDate)}</div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Profissionais do evento */}
+                                {eventProfessionalsList.length > 0 && (
+                                  <div className="border-t border-emerald-200 pt-2">
+                                    <div className="text-xs font-semibold text-emerald-700 mb-1">Profissionais ({eventProfessionalsList.length})</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {eventProfessionalsList.slice(0, 3).map((prof) => (
+                                        <span key={prof.id} className="text-xs bg-emerald-200 text-emerald-800 px-2 py-1 rounded-full">
+                                          {prof.name || prof.usuario}
+                                        </span>
+                                      ))}
+                                      {eventProfessionalsList.length > 3 && (
+                                        <span className="text-xs bg-emerald-200 text-emerald-800 px-2 py-1 rounded-full">
+                                          +{eventProfessionalsList.length - 3}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-                                Encerrado
-                              </span>
-                            </div>
-                            <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                              <div><span className="font-semibold text-slate-700">Saída:</span> {formatShortDate(event.departureDate || event.startDate || event.eventDate)}</div>
-                              <div><span className="font-semibold text-slate-700">Retorno:</span> {formatShortDate(event.returnDate || event.endDate)}</div>
-                              <div className="sm:col-span-2"><span className="font-semibold text-slate-700">Local:</span> {event.locationName || 'Não informado'}</div>
-                            </div>
-                          </button>
-                        ))}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -488,24 +629,24 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                   <input className="neumorphic-input w-full" value={form.contact} onChange={(e) => handleForm('contact', e.target.value)} />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Data de saída</span>
+                  <span className="text-sm font-medium text-slate-700">Data de partida</span>
                   <input type="date" className="neumorphic-input w-full" value={form.departureDate} onChange={(e) => handleForm('departureDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Data do evento (Início)</span>
-                  <input type="date" className="neumorphic-input w-full" value={form.startDate || form.departureDate} onChange={(e) => handleForm('startDate', e.target.value)} />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Data final do evento</span>
-                  <input type="date" className="neumorphic-input w-full" value={form.endDate} onChange={(e) => handleForm('endDate', e.target.value)} />
+                  <span className="text-sm font-medium text-slate-700">Data de montagem - CAEX</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.caexMontageDate} onChange={(e) => handleForm('caexMontageDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Data de montagem - SECRETARIA</span>
                   <input type="date" className="neumorphic-input w-full" value={form.secretariaMontageDate} onChange={(e) => handleForm('secretariaMontageDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Data de montagem - CAEX</span>
-                  <input type="date" className="neumorphic-input w-full" value={form.caexMontageDate} onChange={(e) => handleForm('caexMontageDate', e.target.value)} />
+                  <span className="text-sm font-medium text-slate-700">Data de início do evento</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.startDate || form.departureDate} onChange={(e) => handleForm('startDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data final do evento</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.endDate} onChange={(e) => handleForm('endDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Data de retorno</span>
@@ -559,7 +700,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                           <div>
                             <div className="font-medium text-slate-800">{professional?.name || professional?.usuario || 'Profissional'}</div>
                             <div className="text-xs text-slate-500">
-                              {assignment.departureDate || '—'} → {assignment.returnDate || '—'}
+                              {formatDateShort(assignment.departureDate)} → {formatDateShort(assignment.returnDate)}
                             </div>
                           </div>
                           <button type="button" className="neumorphic-button outline" onClick={() => handleRemoveEventProfessional(assignment.userId)}>
