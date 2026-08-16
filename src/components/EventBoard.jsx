@@ -117,6 +117,7 @@ function getDefaultEventForm() {
     locationName: '',
     clientName: '',
     organizerName: '',
+    organizerWhatsApp: '',
     contact: '',
     departureDate: '',
     startDate: '',
@@ -656,17 +657,25 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                   <span className="text-sm font-medium text-slate-700">Cliente</span>
                   <input className="neumorphic-input w-full" value={form.clientName} onChange={(e) => handleForm('clientName', e.target.value)} />
                 </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">WhatsApp do cliente</span>
+                  <input className="neumorphic-input w-full" value={form.contact} onChange={(e) => handleForm('contact', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Responsável</span>
+                  <input className="neumorphic-input w-full" value={form.organizerName} onChange={(e) => handleForm('organizerName', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">WhatsApp responsável</span>
+                  <input className="neumorphic-input w-full" value={form.organizerWhatsApp} onChange={(e) => handleForm('organizerWhatsApp', e.target.value)} />
+                </label>
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-sm font-medium text-slate-700">Endereço</span>
                   <input className="neumorphic-input w-full" value={form.address} onChange={(e) => handleForm('address', e.target.value)} />
                 </label>
-                <label className="space-y-2">
+                <label className="space-y-2 md:col-span-2">
                   <span className="text-sm font-medium text-slate-700">Local</span>
                   <input className="neumorphic-input w-full" value={form.locationName} onChange={(e) => handleForm('locationName', e.target.value)} />
-                </label>
-                <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Contato</span>
-                  <input className="neumorphic-input w-full" value={form.contact} onChange={(e) => handleForm('contact', e.target.value)} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Data de partida</span>
@@ -691,6 +700,10 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Data de retorno</span>
                   <input type="date" className="neumorphic-input w-full" value={form.returnDate || form.endDate} onChange={(e) => handleForm('returnDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Ambiente</span>
+                  <input className="neumorphic-input w-full" value={form.environmentLink} onChange={(e) => handleForm('environmentLink', e.target.value)} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Tamanho do rótulo</span>
@@ -847,6 +860,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       ...form,
       departureDate: form.departureDate || form.startDate,
       returnDate: form.returnDate || form.endDate,
+      organizerWhatsApp: form.organizerWhatsApp || '',
       users: newEventUsers,
       userAssignments: newEventUserAssignments,
     };
@@ -899,7 +913,9 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       userAssignments: newEventUserAssignments,
       boards: initializeEventBoards(baseEventData, config.defaultItems || []),
     };
-    // DEBUG: Log dos profissionais sendo salvos
+
+    nextEvent.boards.separar = generateSeparationFromMontagem(nextEvent);
+    nextEvent.boards.montagem = nextEvent.boards.montagem || [];
     console.log('🔵 Criando evento com profissionais:', {
       eventName: nextEvent.name,
       profissionaisIds: newEventUsers,
@@ -2257,6 +2273,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       locationName: event.locationName || '',
       clientName: event.clientName || '',
       organizerName: event.organizerName || '',
+      organizerWhatsApp: event.organizerWhatsApp || '',
       contact: event.contact || '',
       departureDate: event.departureDate || event.startDate || '',
       startDate: event.startDate || '',
@@ -2295,6 +2312,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       boards: initializeEventBoards({ ...event, id: Date.now(), status: 'A Iniciar' }, config.defaultItems || []),
       boardStatus: {},
     };
+
+    duplicatedEvent.boards.separar = generateSeparationFromMontagem(duplicatedEvent);
 
     onEventsChange([...events, duplicatedEvent]);
     setActiveEventId(duplicatedEvent.id);
@@ -2679,13 +2698,14 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         })()}
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Cliente:</span> {selectedEvent.clientName || 'Não informado'}</p>
+                          <p><span className="font-semibold">WhatsApp do cliente:</span> {selectedEvent.contact || 'Não informado'}</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Responsável:</span> {selectedEvent.organizerName || 'Não informado'}</p>
+                          <p><span className="font-semibold">WhatsApp responsável:</span> {selectedEvent.organizerWhatsApp || 'Não informado'}</p>
                         </div>
                         <p><span className="font-semibold">Local:</span> {selectedEvent.locationName}</p>
                         <p><span className="font-semibold">Endereço:</span> {selectedEvent.address}</p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <p><span className="font-semibold">Contato:</span> {selectedEvent.contact}</p>
-                        </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Data de Ida:</span> {formatShortDate(selectedEvent.departureDate)}</p>
                           <p><span className="font-semibold">Data de Retorno:</span> {formatShortDate(selectedEvent.returnDate)}</p>
