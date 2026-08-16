@@ -415,11 +415,15 @@ function App() {
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
             <button
-              className="neumorphic-button h-12 w-12 rounded-full p-0"
+              className="neumorphic-button h-12 w-12 rounded-full p-0 flex items-center justify-center"
               aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
               onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? (
+                <img src={`${import.meta.env.BASE_URL || '/'}light.png`} alt="Tema claro" className="h-6 w-6" />
+              ) : (
+                <img src={`${import.meta.env.BASE_URL || '/'}dark.png`} alt="Tema escuro" className="h-6 w-6" />
+              )}
             </button>
             <span className="rounded-3xl bg-white/70 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm">
               {user?.name} • {currentRole === 'master' ? 'Master' : currentRole === 'admin' ? 'Administrador' : 'Usuário'}
@@ -568,7 +572,11 @@ function App() {
                 aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
                 onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
               >
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                {theme === 'dark' ? (
+                  <img src={`${import.meta.env.BASE_URL || '/'}light.png`} alt="Tema claro" className="h-6 w-6" />
+                ) : (
+                  <img src={`${import.meta.env.BASE_URL || '/'}dark.png`} alt="Tema escuro" className="h-6 w-6" />
+                )}
               </button>
 
               <div className="absolute bottom-0 left-0 right-0 p-7 sm:p-10 z-10">
