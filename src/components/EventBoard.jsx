@@ -658,10 +658,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                   <input className="neumorphic-input w-full" value={form.clientName} onChange={(e) => handleForm('clientName', e.target.value)} />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">WhatsApp do cliente</span>
-                  <input className="neumorphic-input w-full" value={form.contact} onChange={(e) => handleForm('contact', e.target.value)} />
-                </label>
-                <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Responsável</span>
                   <input className="neumorphic-input w-full" value={form.organizerName} onChange={(e) => handleForm('organizerName', e.target.value)} />
                 </label>
@@ -2698,11 +2694,11 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         })()}
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Cliente:</span> {selectedEvent.clientName || 'Não informado'}</p>
-                          <p><span className="font-semibold">WhatsApp do cliente:</span> {selectedEvent.contact || 'Não informado'}</p>
+                          <p><span className="font-semibold">Responsável:</span> {selectedEvent.organizerName || 'Não informado'}</p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <p><span className="font-semibold">Responsável:</span> {selectedEvent.organizerName || 'Não informado'}</p>
                           <p><span className="font-semibold">WhatsApp responsável:</span> {selectedEvent.organizerWhatsApp || 'Não informado'}</p>
+                          <p><span className="font-semibold">Contato:</span> {selectedEvent.contact || 'Não informado'}</p>
                         </div>
                         <p><span className="font-semibold">Local:</span> {selectedEvent.locationName}</p>
                         <p><span className="font-semibold">Endereço:</span> {selectedEvent.address}</p>
@@ -2734,8 +2730,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                           </p>
                         </div>
                             <div className="flex flex-wrap items-center gap-3 pt-2">
-                          {selectedEvent.contact && (
-                            <a className="neumorphic-button inline-flex items-center" href={`https://wa.me/${formatPhoneUrl(selectedEvent.contact)}`} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</a>
+                          {selectedEvent.organizerWhatsApp && (
+                            <a className="neumorphic-button inline-flex items-center" href={`https://wa.me/${formatPhoneUrl(selectedEvent.organizerWhatsApp)}`} target="_blank" rel="noreferrer"><MessageCircle className="mr-2 h-4 w-4" />WhatsApp responsável</a>
                           )}
                           {selectedEvent.environmentLink && (
                             <a className="neumorphic-button inline-flex items-center" href={selectedEvent.environmentLink} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Abrir ambiente</a>
