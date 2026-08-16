@@ -396,8 +396,20 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                   <input type="date" className="neumorphic-input w-full" value={form.departureDate} onChange={(e) => handleForm('departureDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Data do evento</span>
+                  <span className="text-sm font-medium text-slate-700">Data do evento (Início)</span>
                   <input type="date" className="neumorphic-input w-full" value={form.startDate || form.departureDate} onChange={(e) => handleForm('startDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data final do evento</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.endDate} onChange={(e) => handleForm('endDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data de montagem - SECRETARIA</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.secretariaMontageDate} onChange={(e) => handleForm('secretariaMontageDate', e.target.value)} />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Data de montagem - CAEX</span>
+                  <input type="date" className="neumorphic-input w-full" value={form.caexMontageDate} onChange={(e) => handleForm('caexMontageDate', e.target.value)} />
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Data de retorno</span>

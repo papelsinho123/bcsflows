@@ -1,4 +1,72 @@
 <?php
+/**
+ * update-files.php
+ * 
+ * USE: Faça upload deste arquivo para /bcsflows/update-files.php
+ * Depois acesse via navegador:
+ *   https://www.nuvematomica.com.br/bcsflows/update-files.php?key=updateNow123
+ * 
+ * Este script vai atualizar os arquivos PHP corrigidos automaticamente
+ */
+
+$expected_key = 'updateNow123';
+$provided_key = $_GET['key'] ?? $_POST['key'] ?? null;
+
+if (!$provided_key || $provided_key !== $expected_key) {
+    http_response_code(403);
+    die('Acesso negado. Chave inválida.');
+}
+
+$base_dir = __DIR__;
+$api_dir = $base_dir . '/api';
+
+// Arquivo de backup
+$backup_marker = $api_dir . '/.last_update_' . date('Y-m-d_H-i-s');
+file_put_contents($backup_marker, 'Backup marker');
+
+$updates = [];
+
+// ========== ATUALIZAR db.php ==========
+$db_php_content = <<<'DBPHP'
+<?php
+// db.php
+// Conexão do banco do BCS Flows.
+
+$db_host = getenv('BCS_DB_HOST') ?: getenv('DB_HOST') ?: 'bcsflows.mysql.dbaas.com.br';
+$db_user = getenv('BCS_DB_USER') ?: getenv('DB_USER') ?: 'bcsflows';
+$db_pass = getenv('BCS_DB_PASS') ?: getenv('DB_PASS') ?: 'And@99188280';
+$db_name = getenv('BCS_DB_NAME') ?: getenv('DB_NAME') ?: 'bcsflows';
+$db_error = null;
+$conn = null;
+
+if (!extension_loaded('mysqli')) {
+  $db_error = 'Extensão mysqli não está habilitada no PHP.';
+} elseif (empty($db_host) || empty($db_user) || empty($db_name)) {
+  $db_error = 'Variáveis do banco ausentes. Defina BCS_DB_HOST, BCS_DB_USER, BCS_DB_PASS e BCS_DB_NAME.';
+} else {
+  $conn = @new mysqli($db_host, $db_user, $db_pass, $db_name);
+  if ($conn && $conn->connect_error) {
+    $db_error = $conn->connect_error;
+    $conn = null;
+  }
+}
+
+if ($conn) {
+  $conn->set_charset('utf8mb4');
+}
+DBPHP;
+
+$db_file = $api_dir . '/db.php';
+if (file_put_contents($db_file, $db_php_content, LOCK_EX)) {
+    $updates['db.php'] = ['status' => 'OK', 'size' => strlen($db_php_content)];
+    chmod($db_file, 0644);
+} else {
+    $updates['db.php'] = ['status' => 'ERRO', 'message' => 'Não conseguiu escrever'];
+}
+
+// ========== ATUALIZAR sync.php ==========
+$sync_php_content = <<<'SYNCPHP'
+<?php
 header('Content-Type: application/json; charset=utf-8');
 
 // IMPORTANTE: Permita fallback para JSON se o banco falhar
@@ -131,3 +199,21 @@ if ($writeJsonSnapshot($data)) {
 
 http_response_code(500);
 echo json_encode(['error' => 'Failed to save data']);
+SYNCPHP;
+
+$sync_file = $api_dir . '/sync.php';
+if (file_put_contents($sync_file, $sync_php_content, LOCK_EX)) {
+    $updates['sync.php'] = ['status' => 'OK', 'size' => strlen($sync_php_content)];
+    chmod($sync_file, 0644);
+} else {
+    $updates['sync.php'] = ['status' => 'ERRO', 'message' => 'Não conseguiu escrever'];
+}
+
+// Resposta
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode([
+    'success' => true,
+    'timestamp' => date('Y-m-d H:i:s'),
+    'updates' => $updates,
+    'next_step' => 'Teste em https://www.nuvematomica.com.br/bcsflows/ - o erro deve desaparecer!',
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
