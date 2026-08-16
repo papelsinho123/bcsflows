@@ -26,6 +26,12 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
   exit;
 }
 
+if (!$conn) {
+  http_response_code(503);
+  echo json_encode(['error' => 'database unavailable', 'details' => $db_error ?? 'Database connection missing']);
+  exit;
+}
+
 $stmt = $conn->prepare("INSERT INTO usuarios (nome, name, usuario, username, email, password, role) VALUES (?, ?, ?, ?, ?, ?, ?)");
 $stmt->bind_param("sssssss", $nome, $name, $usuario, $usuario, $email, $password, $role);
 $ok = $stmt->execute();

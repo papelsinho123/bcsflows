@@ -58,7 +58,10 @@ if ($method === 'GET') {
 
     if (!$allowJsonFallback) {
         http_response_code(503);
-        echo json_encode(['error' => 'Banco de dados indisponível para leitura. Configure BCS_DB_HOST, BCS_DB_USER, BCS_DB_PASS e BCS_DB_NAME.']);
+        echo json_encode([
+            'error' => 'Banco de dados indisponível para leitura.',
+            'details' => $db_error ?? 'Configure BCS_DB_HOST, BCS_DB_USER, BCS_DB_PASS e BCS_DB_NAME.'
+        ]);
         exit;
     }
 
@@ -110,9 +113,10 @@ if ($conn) {
 
 if (!$allowJsonFallback) {
     http_response_code(503);
-    echo json_encode(['error' => 'Não foi possível salvar no banco. Os dados não foram aceitos como sincronizados.']);
-    exit;
-}
+        echo json_encode([
+            'error' => 'Não foi possível salvar no banco.',
+            'details' => $db_error ?? 'Os dados não foram aceitos como sincronizados.'
+        ]);
 
 if ($writeJsonSnapshot($data)) {
     echo json_encode(['success' => true, 'saved' => true, 'fallback' => 'json']);

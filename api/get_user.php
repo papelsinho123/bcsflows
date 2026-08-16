@@ -8,6 +8,12 @@ if ($id <= 0) {
   exit;
 }
 
+if (!$conn) {
+  http_response_code(503);
+  echo json_encode(['error' => 'database unavailable', 'details' => $db_error ?? 'Database connection missing']);
+  exit;
+}
+
 $stmt = $conn->prepare("SELECT id, nome, name, usuario, username, email, password, role, phone, leaveTaken, leaveRuleDays FROM usuarios WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
