@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
-import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText, HelpCircle, X } from 'lucide-react';
+import { LogIn, Box, Settings, Layers, Sun, Moon, Activity, Calendar, FileText, HelpCircle, X, Truck } from 'lucide-react';
 import InventoryModule from './components/InventoryModule.jsx';
 import SettingsModule from './components/SettingsModule.jsx';
 import DashboardModule from './components/DashboardModule.jsx';
 import EventCalendarModule from './components/EventCalendarModule.jsx';
 import EventFinanceModule from './components/EventFinanceModule.jsx';
+import FleetModule from './components/FleetModule.jsx';
 import { getDailyPhrase } from './utils/dailyPhrase.js';
 
 const EventBoard = React.lazy(() => import('./components/EventBoard.jsx'));
@@ -31,6 +32,7 @@ const initialData = {
     proposalItemTypes: [],
     expenseTypes: [],
     paymentTypes: [],
+    fleetVehicles: [],
     defaultItems: [
       { id: 1, type: 'IMPRESSORA TÉRMICA', subframe: 'SECRETARIA' },
       { id: 2, type: 'NOTEBOOK', subframe: 'CAEX' },
@@ -98,6 +100,7 @@ const normalizeData = (stored) => {
           ? Array.from(new Set([...(initialData.config.proposalItemTypes || []), ...parsed.config.proposalItemTypes]))
           : initialData.config.proposalItemTypes || [],
         defaultItems: Array.isArray(parsed.config?.defaultItems) ? parsed.config.defaultItems : initialData.config.defaultItems,
+        fleetVehicles: Array.isArray(parsed.config?.fleetVehicles) ? parsed.config.fleetVehicles : initialData.config.fleetVehicles,
       },
     };
   } catch (error) {
@@ -195,6 +198,7 @@ function App() {
   const [showLoginVideo, setShowLoginVideo] = useState(false);
   const [showLogoutVideo, setShowLogoutVideo] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showEquipmentAlerts, setShowEquipmentAlerts] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const dataRef = useRef(data);
 
@@ -413,6 +417,117 @@ function App() {
   const canAccessSettings = isAdmin;
   const currentConfig = data?.config || initialData.config;
 
+  const equipmentAlerts = useMemo(() => {
+    const roundDate = (dateString) => {
+      const date = new Date(dateString);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const eventRange = (event) => {
+      const start = roundDate(event.departureDate || event.startDate);
+      const end = roundDate(event.returnDate || event.endDate);
+      return start && end ? [start.getTime(), end.getTime()] : null;
+    };
+
+    const activeEvents = (data?.events || []).filter((event) => event.status !== 'Concluído');
+    const typeInventory = (data?.inventory || []).reduce((acc, item) => {
+      if (!item.type) return acc;
+      acc[item.type] = (acc[item.type] || 0) + Number(item.quantity || 0);
+      return acc;
+    }, {});
+
+    const eventInfos = activeEvents
+      .map((event) => {
+        const stockBoard = (event.boards?.separar?.length ? event.boards.separar : event.boards?.montagem) || [];
+        return {
+          event,
+          range: eventRange(event),
+          typeQuantities: stockBoard.reduce((acc, item) => {
+            if (!item.type) return acc;
+            const type = item.type;
+            if (!acc[type]) acc[type] = { stock: 0, rental: 0 };
+            if (item.source === 'LOCAÇÃO') {
+              acc[type].rental += Number(item.quantity || 0);
+            } else {
+              acc[type].stock += Number(item.quantity || 0);
+            }
+            return acc;
+          }, {}),
+        };
+      })
+      .filter((entry) => entry.range);
+
+    const groups = [];
+    eventInfos.forEach((current) => {
+      const overlapInfos = [current];
+      eventInfos.forEach((other) => {
+        if (other.event.id === current.event.id) return;
+        const overlap = current.range[0] <= other.range[1] && other.range[0] <= current.range[1];
+        if (overlap) overlapInfos.push(other);
+      });
+      const key = overlapInfos.map((info) => info.event.id).sort().join(',');
+      if (!groups.some((group) => group.key === key)) {
+        groups.push({ key, infos: overlapInfos });
+      }
+    });
+
+    const messages = [];
+    const addMessage = (text) => {
+      if (!messages.includes(text)) messages.push(text);
+    };
+    const formatDateLabel = (value) => {
+      if (!value) return 'sem data';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'sem data';
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    eventInfos.forEach(({ event, range, typeQuantities }) => {
+      const startLabel = range ? formatDateLabel(range[0]) : 'sem data';
+      const endLabel = range ? formatDateLabel(range[1]) : 'sem data';
+      Object.entries(typeQuantities).forEach(([type, qty]) => {
+        if (type === 'LOCAÇÃO EXTERNA') return;
+        const available = typeInventory[type] || 0;
+        const availableWithRental = available + (qty.rental || 0);
+        if ((qty.stock || 0) > availableWithRental) {
+          addMessage(`FALTA: ${type} | Quantidade: ${(qty.stock || 0) - availableWithRental} | Período: ${startLabel} até ${endLabel} | Evento: ${event.name}`);
+        }
+      });
+    });
+
+    groups.forEach((group) => {
+      if (group.infos.length < 2) return;
+
+      const periodStart = group.infos.reduce((min, info) => {
+        const date = roundDate(info.event.departureDate || info.event.startDate);
+        return date && (!min || date < min) ? date : min;
+      }, null);
+      const periodEnd = group.infos.reduce((max, info) => {
+        const date = roundDate(info.event.returnDate || info.event.endDate);
+        return date && (!max || date > max) ? date : max;
+      }, null);
+
+      const groupTotals = group.infos.reduce((acc, info) => {
+        Object.entries(info.typeQuantities).forEach(([type, qty]) => {
+          acc[type] = (acc[type] || 0) + qty.stock + qty.rental;
+        });
+        return acc;
+      }, {});
+
+      Object.entries(groupTotals).forEach(([type, totalQty]) => {
+        const available = typeInventory[type] || 0;
+        if (totalQty > available) {
+          const names = group.infos.map((info) => info.event.name).join(', ');
+          const startLabel = periodStart ? formatDateLabel(periodStart.getTime()) : 'sem data';
+          const endLabel = periodEnd ? formatDateLabel(periodEnd.getTime()) : 'sem data';
+          addMessage(`FALTA: ${type} | Quantidade: ${totalQty - available} | Período: ${startLabel} até ${endLabel} | Eventos em conflito: ${names}`);
+        }
+      });
+    });
+
+    return messages;
+  }, [data.events, data.inventory]);
+
   const usageManualSections = [
     {
       title: '1. Acesso e autenticação',
@@ -450,6 +565,7 @@ function App() {
     { id: 'calendar', label: 'Calendário', icon: Calendar, private: false },
     { id: 'finance', label: 'Financeiro do Evento', icon: FileText, private: false },
     { id: 'inventory', label: 'Estoque', icon: Box, private: false },
+    { id: 'fleet', label: 'Controle de Frota', icon: Truck, private: false },
     { id: 'settings', label: 'Configurações', icon: Settings, private: true },
   ];
 
@@ -515,6 +631,27 @@ function App() {
               {syncStatus.message}
             </div>
           )}
+          {equipmentAlerts.length > 0 && (
+            <div className="mb-4 rounded-3xl border border-rose-500 bg-rose-100 text-sm text-rose-900">
+              <div className="flex items-center justify-between gap-3 p-3">
+                <span className="font-semibold">Faltas de equipamento</span>
+                <button
+                  type="button"
+                  className="neumorphic-button px-3 py-1.5 text-xs"
+                  onClick={() => setShowEquipmentAlerts((prev) => !prev)}
+                >
+                  {showEquipmentAlerts ? 'Esconder' : 'Mostrar'}
+                </button>
+              </div>
+              {showEquipmentAlerts && (
+                <div className="border-t border-rose-200 p-4">
+                  {equipmentAlerts.map((message, index) => (
+                    <p key={`${message}-${index}`} className="font-semibold">{message}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {route === 'events' && (
             <Suspense fallback={<div className="neumorphic-card p-8 text-center text-slate-600">Carregando painel de eventos...</div>}>
               <EventBoard
@@ -555,8 +692,9 @@ function App() {
             />
           )}
           {route === 'inventory' && <InventoryModule inventory={data?.inventory || []} events={data?.events || []} onUpdateInventory={updateInventory} itemTypes={currentConfig?.itemTypes || []} currentUser={user} />}
-          {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} />}
-          {!['events', 'dashboard', 'finance', 'calendar', 'inventory', 'settings'].includes(route) && (
+          {route === 'fleet' && <FleetModule config={data.config} onUpdateConfig={updateConfig} currentUser={user} />}
+          {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} events={data.events} />}
+          {!['events', 'dashboard', 'finance', 'calendar', 'inventory', 'fleet', 'settings'].includes(route) && (
             <div className="p-6 text-center text-slate-600">
               <p>Página não encontrada. Rota inválida: {route}</p>
             </div>

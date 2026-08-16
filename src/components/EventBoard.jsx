@@ -2325,119 +2325,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     setPendingAction(null);
   };
 
-  const alertMessages = useMemo(() => {
-    const roundDate = (dateString) => {
-      const date = new Date(dateString);
-      return isNaN(date.getTime()) ? null : date;
-    };
-
-    const eventRange = (event) => {
-      const start = roundDate(event.departureDate || event.startDate);
-      const end = roundDate(event.returnDate || event.endDate);
-      return start && end ? [start.getTime(), end.getTime()] : null;
-    };
-
-    const activeEvents = safeEvents.filter((event) => event.status !== 'Concluído');
-    const typeInventory = inventory.reduce((acc, item) => {
-      if (!item.type) return acc;
-      acc[item.type] = (acc[item.type] || 0) + Number(item.quantity || 0);
-      return acc;
-    }, {});
-
-    const eventInfos = activeEvents
-      .map((event) => {
-        const stockBoard = (event.boards?.separar?.length ? event.boards.separar : event.boards?.montagem) || [];
-        return {
-          event,
-          range: eventRange(event),
-          typeQuantities: stockBoard.reduce((acc, item) => {
-            if (!item.type) return acc;
-            const type = item.type;
-            if (!acc[type]) acc[type] = { stock: 0, rental: 0 };
-            if (item.source === 'LOCAÇÃO') {
-              acc[type].rental += Number(item.quantity || 0);
-            } else {
-              acc[type].stock += Number(item.quantity || 0);
-            }
-            return acc;
-          }, {}),
-        };
-      })
-      .filter((entry) => entry.range);
-
-    const groups = [];
-    eventInfos.forEach((current) => {
-      const overlapInfos = [current];
-      eventInfos.forEach((other) => {
-        if (other.event.id === current.event.id) return;
-        const overlap = current.range[0] <= other.range[1] && other.range[0] <= current.range[1];
-        if (overlap) overlapInfos.push(other);
-      });
-      const key = overlapInfos.map((info) => info.event.id).sort().join(',');
-      if (!groups.some((group) => group.key === key)) {
-        groups.push({ key, infos: overlapInfos });
-      }
-    });
-
-    const messages = [];
-
-    const addMessage = (text) => {
-      if (!messages.includes(text)) messages.push(text);
-    };
-
-    const formatDateLabel = (value) => {
-      if (!value) return 'sem data';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return 'sem data';
-      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
-
-    eventInfos.forEach(({ event, range, typeQuantities }) => {
-      const startLabel = range ? formatDateLabel(range[0]) : 'sem data';
-      const endLabel = range ? formatDateLabel(range[1]) : 'sem data';
-      Object.entries(typeQuantities).forEach(([type, qty]) => {
-        if (type === 'LOCAÇÃO EXTERNA') return;
-        const available = typeInventory[type] || 0;
-        const availableWithRental = available + (qty.rental || 0);
-        if ((qty.stock || 0) > availableWithRental) {
-          addMessage(`FALTA: ${type} | Quantidade: ${(qty.stock || 0) - availableWithRental} | Período: ${startLabel} até ${endLabel} | Evento: ${event.name}`);
-        }
-      });
-    });
-
-    groups.forEach((group) => {
-      if (group.infos.length < 2) return;
-
-      const periodStart = group.infos.reduce((min, info) => {
-        const date = roundDate(info.event.departureDate || info.event.startDate);
-        return date && (!min || date < min) ? date : min;
-      }, null);
-      const periodEnd = group.infos.reduce((max, info) => {
-        const date = roundDate(info.event.returnDate || info.event.endDate);
-        return date && (!max || date > max) ? date : max;
-      }, null);
-
-      const groupTotals = group.infos.reduce((acc, info) => {
-        Object.entries(info.typeQuantities).forEach(([type, qty]) => {
-          acc[type] = (acc[type] || 0) + qty;
-        });
-        return acc;
-      }, {});
-
-      Object.entries(groupTotals).forEach(([type, totalQty]) => {
-        const available = typeInventory[type] || 0;
-        if (totalQty > available) {
-          const names = group.infos.map((info) => info.event.name).join(', ');
-          const startLabel = periodStart ? formatDateLabel(periodStart.getTime()) : 'sem data';
-          const endLabel = periodEnd ? formatDateLabel(periodEnd.getTime()) : 'sem data';
-          addMessage(`FALTA: ${type} | Quantidade: ${totalQty - available} | Período: ${startLabel} até ${endLabel} | Eventos em conflito: ${names}`);
-        }
-      });
-    });
-
-    return messages;
-  }, [events, inventory]);
-
   const renderEventBoard = () => {
     if (!selectedEvent) return null;
 
@@ -2447,14 +2334,6 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
 
     return (
       <div className="space-y-4">
-        {alertMessages.length > 0 && (
-          <div className="rounded-3xl border border-rose-500 bg-rose-100 p-4 text-sm text-rose-900">
-            {alertMessages.map((message, index) => (
-              <p key={index} className="font-semibold">{message}</p>
-            ))}
-          </div>
-        )}
-
         {pendingEventClosure && (
           <div className="rounded-3xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Deseja encerrar o evento {pendingEventClosure.name}?</p>

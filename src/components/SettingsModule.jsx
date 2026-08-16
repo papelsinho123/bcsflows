@@ -38,7 +38,14 @@ const CORE_ITEM_TYPES = [
 const HIDDEN_ITEM_TYPES = ['IMPRESSORA LASER', 'TOTEM'];
 const CORE_EXPENSE_TYPES = ['HOSPEDAGEM', 'COMBUSTIVEL', 'ESTACIONAMENTO', 'OUTRO'];
 
-export default function SettingsModule({ config = {}, users = [], onUpdateConfig = () => {}, onUpdateUsers = () => {}, currentUser }) {
+export const canRemovePaymentType = (paymentType, events = []) => {
+  const value = String(paymentType ?? '').trim();
+  if (!value) return true;
+
+  return !events.some((event) => Array.isArray(event?.finances) && event.finances.some((item) => String(item?.paymentType || '').trim() === value));
+};
+
+export default function SettingsModule({ config = {}, users = [], onUpdateConfig = () => {}, onUpdateUsers = () => {}, currentUser, events = [] }) {
   const safeConfig = config || {};
   const isMaster = normalizeUserRole(currentUser?.role || '') === 'master';
   const canCreateUsers = canManageAdminFeatures(currentUser?.role || '') && isMaster;
@@ -289,14 +296,31 @@ export default function SettingsModule({ config = {}, users = [], onUpdateConfig
                 {(safeConfig.paymentTypes || []).length === 0 ? (
                   <div className="text-sm text-slate-500">Nenhum tipo de pagamento cadastrado.</div>
                 ) : (
-                  (safeConfig.paymentTypes || []).map((p) => (
-                    <div key={p} className="flex items-center justify-between gap-3 p-3 rounded-3xl bg-white/70 shadow-sm">
-                      <div className="font-medium">{p}</div>
-                      <div>
-                        <button className="neumorphic-button outline" onClick={() => onUpdateConfig({ ...safeConfig, paymentTypes: (safeConfig.paymentTypes || []).filter((x) => x !== p) })}>Remover</button>
+                  (safeConfig.paymentTypes || []).map((p) => {
+                    const canRemove = canRemovePaymentType(p, events);
+                    return (
+                      <div key={p} className="flex items-center justify-between gap-3 p-3 rounded-3xl bg-white/70 shadow-sm">
+                        <div className="font-medium">{p}</div>
+                        <div>
+                          <button
+                            className="neumorphic-button outline"
+                            disabled={!canRemove}
+                            title={canRemove ? 'Remover tipo de pagamento' : 'Esse tipo de pagamento já está sendo usado em um gasto existente'}
+                            onClick={() => {
+                              if (!canRemove) {
+                                setSettingsAlerts([{ field: 'payment', message: 'Não é possível remover esse tipo de pagamento porque ele já está sendo usado em algum gasto cadastrado.' }]);
+                                return;
+                              }
+
+                              onUpdateConfig({ ...safeConfig, paymentTypes: (safeConfig.paymentTypes || []).filter((x) => x !== p) });
+                            }}
+                          >
+                            Remover
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
