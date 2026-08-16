@@ -282,6 +282,22 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     : safeEvents.filter((event) => Array.isArray(event?.users) && event.users.some((userId) => userId === user?.id));
 
   useEffect(() => {
+    // DEBUG: Verificar se users está sendo passado corretamente
+    if (users.length === 0 && safeEvents.length > 0) {
+      console.warn('⚠️ EventBoard: users prop vazia!', {
+        usersLength: users.length,
+        eventsLength: safeEvents.length,
+        eventsSample: safeEvents.slice(0, 2).map(e => ({ id: e.id, name: e.name, users: e.users, userAssignments: e.userAssignments }))
+      });
+    } else if (users.length > 0) {
+      console.log('✅ EventBoard: users prop carregados', {
+        usersLength: users.length,
+        userNames: users.map(u => u.name)
+      });
+    }
+  }, [users, safeEvents]);
+
+  useEffect(() => {
     if (!safeEvents.length) {
       setActiveEventId(null);
       return;
@@ -414,7 +430,29 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                           {eventsInMonth.map((event) => {
                             const isActive = String(event.id) === String(activeEventId);
-                            const eventProfessionalsList = users.filter((u) => (event.users || []).includes(u.id));
+                            // Tentar obter profissionais de múltiplas fontes
+                            let eventProfessionalsList = [];
+                            
+                            if (users.length > 0) {
+                              // Se temos usuários, usar o filtro normal
+                              eventProfessionalsList = users.filter((u) => 
+                                (event.users || []).some(userId => String(u.id) === String(userId))
+                              );
+                            } else if ((event.userAssignments || []).length > 0) {
+                              // Se não temos usuários, usar userAssignments como fallback
+                              eventProfessionalsList = (event.userAssignments || []).map((assignment) => ({
+                                id: assignment.userId,
+                                name: `Profissional ${assignment.userId}`,
+                                usuario: `user_${assignment.userId}`
+                              }));
+                            } else if ((event.users || []).length > 0) {
+                              // Último fallback: mostrar IDs de usuários se disponíveis
+                              eventProfessionalsList = (event.users || []).map((userId) => ({
+                                id: userId,
+                                name: `Profissional ${userId}`,
+                                usuario: `user_${userId}`
+                              }));
+                            }
                             return (
                               <button
                                 key={event.id}
@@ -510,7 +548,29 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                           {eventsInMonth.map((event) => {
-                            const eventProfessionalsList = users.filter((u) => (event.users || []).includes(u.id));
+                            // Tentar obter profissionais de múltiplas fontes
+                            let eventProfessionalsList = [];
+                            
+                            if (users.length > 0) {
+                              // Se temos usuários, usar o filtro normal
+                              eventProfessionalsList = users.filter((u) => 
+                                (event.users || []).some(userId => String(u.id) === String(userId))
+                              );
+                            } else if ((event.userAssignments || []).length > 0) {
+                              // Se não temos usuários, usar userAssignments como fallback
+                              eventProfessionalsList = (event.userAssignments || []).map((assignment) => ({
+                                id: assignment.userId,
+                                name: `Profissional ${assignment.userId}`,
+                                usuario: `user_${assignment.userId}`
+                              }));
+                            } else if ((event.users || []).length > 0) {
+                              // Último fallback: mostrar IDs de usuários se disponíveis
+                              eventProfessionalsList = (event.users || []).map((userId) => ({
+                                id: userId,
+                                name: `Profissional ${userId}`,
+                                usuario: `user_${userId}`
+                              }));
+                            }
                             return (
                               <button
                                 key={`${event.id}-closed`}
@@ -2216,7 +2276,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       returnDate: assignment.returnDate || assignment.endDate || '',
     })));
     setShowEventForm(true);
-    setShowEventSelector(true);
+    setShowEventSelector(false);
     setActiveEventId(event.id);
     setExpandedBoard([]);
   };
