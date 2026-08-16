@@ -68,8 +68,11 @@ export const getFleetMaintenanceAlerts = (vehicles = [], referenceDate = new Dat
 
 export const buildFleetReport = (vehicle = {}) => {
   const normalized = normalizeFleetVehicle(vehicle);
+  const totalCost = normalized.maintenanceHistory.reduce((sum, entry) => sum + Number(entry.cost || 0), 0);
   const lines = [
     'RELATÓRIO DE MANUTENÇÃO DE VEÍCULO',
+    '===============================',
+    'DADOS DO VEÍCULO',
     `Veículo: ${normalized.name || 'Não identificado'}`,
     `Placa: ${normalized.plate || 'N/A'}`,
     `Marca/Modelo: ${normalized.brand || 'N/A'} ${normalized.model || ''}`.trim(),
@@ -77,18 +80,26 @@ export const buildFleetReport = (vehicle = {}) => {
     `Status: ${normalized.status || 'Ativo'}`,
     `Previsão de retorno: ${normalized.returnDate ? formatDatePtBR(normalized.returnDate) : 'Não informada'}`,
     '',
-    'Histórico de manutenção:',
+    'MANUTENÇÕES REALIZADAS',
+    '----------------------',
   ];
 
   if (!normalized.maintenanceHistory.length) {
-    lines.push('Nenhum registro encontrado.');
+    lines.push('Nenhuma manutenção registrada.');
+    lines.push('');
+    lines.push(`TOTAL GASTO: R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     return lines.join('\n');
   }
 
   normalized.maintenanceHistory.forEach((entry) => {
-    lines.push(`- ${formatDatePtBR(entry.date)} | ${entry.type} | ${entry.location || 'Local não informado'} | ${entry.description || 'Sem descrição'} | Custo: R$ ${Number(entry.cost || 0).toFixed(2)}`);
+    lines.push(`- ${formatDatePtBR(entry.date)} | ${entry.type}`);
+    lines.push(`  Local: ${entry.location || 'Local não informado'}`);
+    lines.push(`  Descrição: ${entry.description || 'Sem descrição'}`);
+    lines.push(`  Valor: R$ ${Number(entry.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
   });
 
+  lines.push('');
+  lines.push(`TOTAL GASTO: R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
   return lines.join('\n');
 };
 

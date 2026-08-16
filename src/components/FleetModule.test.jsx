@@ -23,19 +23,28 @@ describe('FleetModule', () => {
     });
   });
 
-  it('builds a printable maintenance report for a vehicle', () => {
+  it('builds a printable maintenance report for a vehicle with organized details and totals', () => {
     const report = buildFleetReport({
       name: 'Caminhão 01',
       plate: 'ABC-1234',
+      brand: 'Mercedes',
+      model: 'Actros',
+      year: 2022,
+      status: 'Ativo',
       maintenanceHistory: [
-        { date: '2026-08-01', type: 'Troca de óleo', description: 'Troca de óleo e filtro', cost: 450 },
-        { date: '2026-08-15', type: 'Revisão', description: 'Revisão geral', cost: 980 },
+        { date: '2026-08-01', type: 'Troca de óleo', description: 'Troca de óleo e filtro', cost: 450, location: 'Oficina Central' },
+        { date: '2026-08-15', type: 'Revisão', description: 'Revisão geral', cost: 980, location: 'Pátio da empresa' },
       ],
     });
 
     expect(report).toContain('Caminhão 01');
+    expect(report).toContain('Mercedes');
     expect(report).toContain('Troca de óleo');
     expect(report).toContain('Revisão');
+    expect(report).toContain('Oficina Central');
+    expect(report).toContain('Pátio da empresa');
+    expect(report).toContain('TOTAL GASTO');
+    expect(report).toContain('R$ 1.430,00');
   });
 
   it('formats dates with day-month-year Brazilian order', () => {
