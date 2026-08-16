@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'bcs_flows_data_v1';
-const DEBUG = false; // Mude para true para ver logs
+const DEBUG = true; // Mude para true para ver logs
 
 const getApiBase = () => {
   const fromWindow = typeof window !== 'undefined' ? window.__BCS_API_BASE__ : undefined;
