@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFleetReport, normalizeFleetVehicle } from './FleetModule.jsx';
+import { buildFleetReport, formatDatePtBR, getFleetMaintenanceAlerts, normalizeFleetVehicle } from './FleetModule.jsx';
 
 describe('FleetModule', () => {
   it('normalizes vehicle data and preserves maintenance history', () => {
@@ -36,5 +36,31 @@ describe('FleetModule', () => {
     expect(report).toContain('Caminhão 01');
     expect(report).toContain('Troca de óleo');
     expect(report).toContain('Revisão');
+  });
+
+  it('formats dates with day-month-year Brazilian order', () => {
+    expect(formatDatePtBR('2026-08-16')).toBe('16/08/2026');
+    expect(formatDatePtBR('')).toBe('');
+  });
+
+  it('reports overdue scheduled maintenance with vehicle details', () => {
+    const alerts = getFleetMaintenanceAlerts([
+      {
+        id: 'vehicle-1',
+        name: 'Van 02',
+        plate: 'XYZ-9988',
+        status: 'Em manutenção',
+        scheduledMaintenance: {
+          type: 'Troca de óleo',
+          dueDate: '2026-08-01',
+          location: 'Oficina Central',
+        },
+      },
+    ], '2026-08-16');
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toContain('Van 02');
+    expect(alerts[0]).toContain('Troca de óleo');
+    expect(alerts[0]).toContain('Oficina Central');
   });
 });

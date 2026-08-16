@@ -692,7 +692,7 @@ function App() {
             />
           )}
           {route === 'inventory' && <InventoryModule inventory={data?.inventory || []} events={data?.events || []} onUpdateInventory={updateInventory} itemTypes={currentConfig?.itemTypes || []} currentUser={user} />}
-          {route === 'fleet' && <FleetModule config={data.config} onUpdateConfig={updateConfig} currentUser={user} />}
+          {route === 'fleet' && <FleetModule config={data.config} onUpdateConfig={updateConfig} currentUser={user} events={data.events} />}
           {route === 'settings' && canAccessSettings && <SettingsModule config={data.config} onUpdateConfig={updateConfig} users={data.users} onUpdateUsers={updateUsers} currentUser={user} events={data.events} />}
           {!['events', 'dashboard', 'finance', 'calendar', 'inventory', 'fleet', 'settings'].includes(route) && (
             <div className="p-6 text-center text-slate-600">

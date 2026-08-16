@@ -231,7 +231,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   const fileInputRef = React.useRef(null);
   const [importStatus, setImportStatus] = useState('');
   const [importErrors, setImportErrors] = useState([]);
-  const [newTransportMode, setNewTransportMode] = useState('CARRO BCS');
+  const [newTransportMode, setNewTransportMode] = useState('');
+  const [newTransportVehicleId, setNewTransportVehicleId] = useState('');
   const [newTransportDepartureDate, setNewTransportDepartureDate] = useState('');
   const [newTransportReturnDate, setNewTransportReturnDate] = useState('');
   const [newTransportDepartureTime, setNewTransportDepartureTime] = useState('');
@@ -317,6 +318,34 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
     const ids = new Set([...(selectedEvent.users || []), ...(selectedEvent.userAssignments?.map((assignment) => assignment.userId) || [])]);
     return users.filter((user) => ids.has(user.id));
   }, [selectedEvent, users]);
+  const fleetTransportOptions = useMemo(() => {
+    const vehicles = Array.isArray(config?.fleetVehicles) ? config.fleetVehicles : [];
+    return vehicles.map((vehicle) => ({
+      id: vehicle.id,
+      label: `${vehicle.name} (${vehicle.plate})`,
+      status: vehicle.status,
+    }));
+  }, [config]);
+  const fleetVehicleAssignments = useMemo(() => {
+    const map = {};
+    safeEvents.forEach((event) => {
+      const transportItems = Array.isArray(event?.boards?.deslocamento) ? event.boards.deslocamento : [];
+      transportItems.forEach((item) => {
+        if (!item?.vehicleId) return;
+        map[item.vehicleId] = {
+          eventId: event.id,
+          eventName: event.name,
+          professionals: Array.from(new Set([...(event.users || []), ...(event.userAssignments?.map((assignment) => assignment.userId) || [])])).filter(Boolean).map((professionalId) => users.find((user) => user.id === professionalId)?.name).filter(Boolean),
+        };
+      });
+    });
+    return map;
+  }, [safeEvents, users]);
+  const isVehicleUnavailableForEvent = (vehicleId) => {
+    if (!vehicleId || !selectedEvent) return false;
+    const assignment = fleetVehicleAssignments[vehicleId];
+    return !!assignment && String(assignment.eventId) !== String(selectedEvent.id);
+  };
   const targetTransferDateRange = useMemo(() => {
     const targetEvent = safeEvents.find((event) => String(event.id) === String(transferForm.targetEventId));
     return getEventTransferDateRange(targetEvent);
@@ -3055,7 +3084,20 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                             <div className="space-y-3">
                               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                                 <select className="neumorphic-select" value={newTransportMode} onChange={(e) => setNewTransportMode(e.target.value)}>
-                                  <option value="CARRO BCS">CARRO BCS</option>
+                                  <option value="">Selecione o tipo de deslocamento</option>
+                                  {fleetTransportOptions.length > 0 && (
+                                    <optgroup label="Veículos da frota">
+                                      {fleetTransportOptions.map((vehicle) => {
+                                        const assignment = fleetVehicleAssignments[vehicle.id];
+                                        const unavailable = !!assignment && String(assignment.eventId) !== String(selectedEvent?.id);
+                                        return (
+                                          <option key={vehicle.id} value={`FROTA:${vehicle.id}`} disabled={unavailable}>
+                                            {vehicle.label}{unavailable ? ` (indisponível: ${assignment.eventName})` : ''}
+                                          </option>
+                                        );
+                                      })}
+                                    </optgroup>
+                                  )}
                                   <option value="UBER">UBER</option>
                                   <option value="AVIÃO">AVIÃO</option>
                                   <option value="ÔNIBUS">ÔNIBUS</option>
@@ -3063,17 +3105,25 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                 </select>
                                 {!isEventCompleted ? (
                                   <button className="neumorphic-button" onClick={() => {
+                                    const selectedFleetVehicle = fleetTransportOptions.find((vehicle) => `FROTA:${vehicle.id}` === newTransportMode);
+                                    const isFleetSelection = Boolean(selectedFleetVehicle);
+                                    const assignment = selectedFleetVehicle ? fleetVehicleAssignments[selectedFleetVehicle.id] : null;
+                                    if (isFleetSelection && assignment && String(assignment.eventId) !== String(selectedEvent.id)) {
+                                      window.alert(`Este veículo já está em uso no evento ${assignment.eventName}${assignment.professionals.length ? ` com ${assignment.professionals.join(', ')}` : ''}.`);
+                                      return;
+                                    }
                                     const item = {
                                       id: `trans-${Date.now()}`,
                                       name: 'Transporte',
                                       type: 'DESLOCAMENTO',
                                       quantity: 1,
-                                      transportMode: newTransportMode,
+                                      transportMode: isFleetSelection ? selectedFleetVehicle.label : newTransportMode,
+                                      vehicleId: isFleetSelection ? selectedFleetVehicle.id : '',
                                       departureDate: newTransportDepartureDate,
                                       returnDate: newTransportReturnDate,
                                       departureTime: newTransportDepartureTime,
                                       returnTime: newTransportReturnTime,
-                                      vehicleModel: newTransportVehicleModel,
+                                      vehicleModel: isFleetSelection ? selectedFleetVehicle.label : newTransportVehicleModel,
                                       reservationCode: newTransportReservationCode,
                                       passageCode: newTransportReservationCode,
                                       company: newTransportCompany,
@@ -3084,6 +3134,8 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                       attachmentData: newTransportVoucherData,
                                     };
                                     addBoardItem(selectedEvent, 'deslocamento', item);
+                                    setNewTransportMode('');
+                                    setNewTransportVehicleId('');
                                     setNewTransportDepartureDate('');
                                     setNewTransportReturnDate('');
                                     setNewTransportDepartureTime('');
@@ -3126,12 +3178,14 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                 )}
                               </div>
                             </div>
-                            {newTransportMode === 'CARRO BCS' && (
+                            {newTransportMode.startsWith('FROTA:') && (
                               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                                <div className="text-sm font-semibold text-slate-700">Detalhes do veículo</div>
+                                <div className="text-sm font-semibold text-slate-700">Veículo cadastrado na frota</div>
                                 <div className="space-y-1">
-                                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Modelo do veículo</label>
-                                  <input type="text" className="neumorphic-input" value={newTransportVehicleModel} onChange={(e) => setNewTransportVehicleModel(e.target.value)} placeholder="Ex.: Corolla, Hilux, Onix" />
+                                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Veículo selecionado</label>
+                                  <div className="rounded-2xl bg-white px-3 py-2 text-sm text-slate-700">
+                                    {fleetTransportOptions.find((vehicle) => `FROTA:${vehicle.id}` === newTransportMode)?.label || 'Veículo da frota'}
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -3215,7 +3269,10 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                                     <div className="text-sm text-slate-500">{item.name}</div>
                                     {!isEditingTransportItem && (
                                       <div className="mt-2 space-y-1 text-sm text-slate-600">
-                                        {item.vehicleModel && <div>Modelo: {item.vehicleModel}</div>}
+                                        {item.vehicleId && fleetTransportOptions.some((vehicle) => vehicle.id === item.vehicleId) && (
+                                          <div>Veículo: {fleetTransportOptions.find((vehicle) => vehicle.id === item.vehicleId)?.label || item.vehicleModel}</div>
+                                        )}
+                                        {!item.vehicleId && item.vehicleModel && <div>Modelo: {item.vehicleModel}</div>}
                                         {item.company && <div>EMPRESA: {item.company}</div>}
                                         {item.professionalIds?.length > 0 && (
                                           <div>Profissionais: {item.professionalIds.map((id) => users.find((user) => user.id === id)?.name || `#${id}`).join(', ')}</div>

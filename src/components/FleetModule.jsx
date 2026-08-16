@@ -3,6 +3,27 @@ import NeumorphicCard from './NeumorphicCard.jsx';
 
 const DEFAULT_FLEET_TYPES = ['Troca de óleo', 'Manutenção', 'Troca de pneus', 'Revisão'];
 
+export const formatDatePtBR = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (!normalized) return '';
+    const isoMatch = normalized.match(/^\d{4}-\d{2}-\d{2}$/);
+    if (isoMatch) {
+      const [year, month, day] = normalized.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
+    }
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
+};
+
 export const normalizeFleetVehicle = (vehicle = {}) => {
   const normalized = {
     id: vehicle.id || `vehicle-${Date.now()}`,
@@ -11,19 +32,38 @@ export const normalizeFleetVehicle = (vehicle = {}) => {
     brand: String(vehicle.brand || '').trim(),
     model: String(vehicle.model || '').trim(),
     year: Number(vehicle.year || new Date().getFullYear()),
-    currentOdometer: Number(vehicle.currentOdometer || 0),
     status: String(vehicle.status || 'Ativo').trim(),
+    returnDate: vehicle.returnDate || '',
+    scheduledMaintenance: vehicle.scheduledMaintenance || null,
     maintenanceHistory: Array.isArray(vehicle.maintenanceHistory) ? vehicle.maintenanceHistory.map((entry, index) => ({
       id: entry.id || `${vehicle.id || 'vehicle'}-history-${index}`,
       date: entry.date || new Date().toISOString().slice(0, 10),
       type: String(entry.type || 'Manutenção').trim(),
       description: String(entry.description || '').trim(),
       cost: Number(entry.cost || 0),
-      odometer: Number(entry.odometer || vehicle.currentOdometer || 0),
+      location: String(entry.location || '').trim(),
+      receipt: entry.receipt || '',
+      receiptName: entry.receiptName || '',
     })) : [],
   };
 
   return normalized;
+};
+
+export const getFleetMaintenanceAlerts = (vehicles = [], referenceDate = new Date()) => {
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+
+  return vehicles
+    .filter((vehicle) => vehicle?.scheduledMaintenance?.dueDate)
+    .filter((vehicle) => {
+      const dueDate = new Date(vehicle.scheduledMaintenance.dueDate);
+      return !Number.isNaN(dueDate.getTime()) && dueDate <= today;
+    })
+    .map((vehicle) => {
+      const maintenance = vehicle.scheduledMaintenance || {};
+      return `${vehicle.name} (${vehicle.plate}) — ${maintenance.type} — ${maintenance.location || 'Local não informado'} — ${formatDatePtBR(maintenance.dueDate)}`;
+    });
 };
 
 export const buildFleetReport = (vehicle = {}) => {
@@ -35,6 +75,7 @@ export const buildFleetReport = (vehicle = {}) => {
     `Marca/Modelo: ${normalized.brand || 'N/A'} ${normalized.model || ''}`.trim(),
     `Ano: ${normalized.year || 'N/A'}`,
     `Status: ${normalized.status || 'Ativo'}`,
+    `Previsão de retorno: ${normalized.returnDate ? formatDatePtBR(normalized.returnDate) : 'Não informada'}`,
     '',
     'Histórico de manutenção:',
   ];
@@ -45,43 +86,98 @@ export const buildFleetReport = (vehicle = {}) => {
   }
 
   normalized.maintenanceHistory.forEach((entry) => {
-    lines.push(`- ${entry.date} | ${entry.type} | ${entry.description || 'Sem descrição'} | KM: ${entry.odometer || 0} | Custo: R$ ${Number(entry.cost || 0).toFixed(2)}`);
+    lines.push(`- ${formatDatePtBR(entry.date)} | ${entry.type} | ${entry.location || 'Local não informado'} | ${entry.description || 'Sem descrição'} | Custo: R$ ${Number(entry.cost || 0).toFixed(2)}`);
   });
 
   return lines.join('\n');
 };
 
-export default function FleetModule({ config = {}, onUpdateConfig = () => {}, currentUser }) {
+export default function FleetModule({ config = {}, onUpdateConfig = () => {}, currentUser, events = [] }) {
   const safeConfig = config || {};
   const vehicles = Array.isArray(safeConfig.fleetVehicles) ? safeConfig.fleetVehicles : [];
+  const fleetAssignments = useMemo(() => {
+    const map = {};
+    events.forEach((event) => {
+      const transportItems = Array.isArray(event?.boards?.deslocamento) ? event.boards.deslocamento : [];
+      transportItems.forEach((item) => {
+        if (!item?.vehicleId) return;
+        const assignedProfessionals = Array.isArray(event?.users) ? event.users : [];
+        const assignedFromAssignments = Array.isArray(event?.userAssignments) ? event.userAssignments.map((assignment) => assignment.userId) : [];
+        map[item.vehicleId] = {
+          eventId: event.id,
+          eventName: event.name,
+          professionals: Array.from(new Set([...assignedProfessionals, ...assignedFromAssignments])).filter(Boolean),
+        };
+      });
+    });
+    return map;
+  }, [events]);
   const [form, setForm] = useState({
     name: '',
     plate: '',
     brand: '',
     model: '',
     year: new Date().getFullYear(),
-    currentOdometer: 0,
     status: 'Ativo',
+    returnDate: '',
   });
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [serviceForm, setServiceForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     type: DEFAULT_FLEET_TYPES[0],
     description: '',
+    location: '',
     cost: '',
-    odometer: 0,
+    receipt: '',
+    receiptName: '',
   });
+  const [isEditingVehicle, setIsEditingVehicle] = useState(false);
 
   const activeVehicle = useMemo(
     () => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || vehicles[0] || null,
     [selectedVehicleId, vehicles],
   );
 
+  const fleetAlerts = useMemo(() => getFleetMaintenanceAlerts(vehicles), [vehicles]);
+  const vehicleUsageDetails = useMemo(() => {
+    const details = {};
+    vehicles.forEach((vehicle) => {
+      const assignment = fleetAssignments[vehicle.id];
+      if (assignment) {
+        details[vehicle.id] = assignment;
+      }
+    });
+    return details;
+  }, [fleetAssignments, vehicles]);
+
+  const openVehicleEditor = (vehicle = null) => {
+    const source = vehicle || activeVehicle;
+    if (!source) {
+      setForm({ name: '', plate: '', brand: '', model: '', year: new Date().getFullYear(), status: 'Ativo', returnDate: '' });
+      setIsEditingVehicle(false);
+      return;
+    }
+
+    setForm({
+      name: source.name || '',
+      plate: source.plate || '',
+      brand: source.brand || '',
+      model: source.model || '',
+      year: source.year || new Date().getFullYear(),
+      status: source.status || 'Ativo',
+      returnDate: source.returnDate || '',
+    });
+    setSelectedVehicleId(source.id);
+    setIsEditingVehicle(true);
+  };
+
   const addVehicle = () => {
     const nextVehicle = normalizeFleetVehicle({
       ...form,
-      id: `vehicle-${Date.now()}`,
-      maintenanceHistory: [],
+      id: isEditingVehicle && activeVehicle ? activeVehicle.id : `vehicle-${Date.now()}`,
+      maintenanceHistory: isEditingVehicle && activeVehicle ? activeVehicle.maintenanceHistory : [],
+      scheduledMaintenance: isEditingVehicle && activeVehicle ? activeVehicle.scheduledMaintenance : null,
+      returnDate: form.status === 'Em manutenção' ? form.returnDate : '',
     });
 
     if (!nextVehicle.name || !nextVehicle.plate) {
@@ -89,17 +185,21 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
       return;
     }
 
-    const nextVehicles = [...vehicles, nextVehicle];
+    const nextVehicles = isEditingVehicle && activeVehicle
+      ? vehicles.map((vehicle) => (vehicle.id === activeVehicle.id ? nextVehicle : vehicle))
+      : [...vehicles, nextVehicle];
+
     onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
     setSelectedVehicleId(nextVehicle.id);
+    setIsEditingVehicle(false);
     setForm({
       name: '',
       plate: '',
       brand: '',
       model: '',
       year: new Date().getFullYear(),
-      currentOdometer: 0,
       status: 'Ativo',
+      returnDate: '',
     });
   };
 
@@ -112,6 +212,39 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
     if (selectedVehicleId === id) {
       setSelectedVehicleId(nextVehicles[0]?.id || '');
     }
+    setIsEditingVehicle(false);
+  };
+
+  const updateStatusWithReturnDate = (status) => {
+    if (!activeVehicle) return;
+    const nextStatus = status || 'Ativo';
+    const nextVehicles = vehicles.map((vehicle) => {
+      if (vehicle.id !== activeVehicle.id) return vehicle;
+      return {
+        ...vehicle,
+        status: nextStatus,
+        returnDate: nextStatus === 'Em manutenção' ? (vehicle.returnDate || '') : '',
+      };
+    });
+    onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
+  };
+
+  const saveScheduledMaintenance = () => {
+    if (!activeVehicle) return;
+    const type = serviceForm.type || DEFAULT_FLEET_TYPES[0];
+    const dueDate = serviceForm.date || new Date().toISOString().slice(0, 10);
+    const nextVehicles = vehicles.map((vehicle) => {
+      if (vehicle.id !== activeVehicle.id) return vehicle;
+      return {
+        ...vehicle,
+        scheduledMaintenance: {
+          type,
+          dueDate,
+          location: serviceForm.location || 'Local não informado',
+        },
+      };
+    });
+    onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
   };
 
   const addMaintenance = () => {
@@ -126,17 +259,18 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
       type: serviceForm.type,
       description: serviceForm.description || 'Sem descrição',
       cost: Number(serviceForm.cost || 0),
-      odometer: Number(serviceForm.odometer || activeVehicle.currentOdometer || 0),
+      location: serviceForm.location || 'Local não informado',
+      receipt: serviceForm.receipt || '',
+      receiptName: serviceForm.receiptName || '',
     };
 
     const nextVehicles = vehicles.map((vehicle) => {
       if (vehicle.id !== activeVehicle.id) return vehicle;
-      const normalizedVehicle = normalizeFleetVehicle({
+      return normalizeFleetVehicle({
         ...vehicle,
-        currentOdometer: Math.max(Number(vehicle.currentOdometer || 0), Number(entry.odometer || 0)),
         maintenanceHistory: [...(vehicle.maintenanceHistory || []), entry],
+        scheduledMaintenance: null,
       });
-      return normalizedVehicle;
     });
 
     onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
@@ -144,9 +278,34 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
       date: new Date().toISOString().slice(0, 10),
       type: DEFAULT_FLEET_TYPES[0],
       description: '',
+      location: '',
       cost: '',
-      odometer: activeVehicle.currentOdometer || 0,
+      receipt: '',
+      receiptName: '',
     });
+  };
+
+  const handleReceiptUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setServiceForm((prev) => ({
+        ...prev,
+        receipt: String(reader.result || ''),
+        receiptName: file.name,
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const downloadReceipt = (receipt, name) => {
+    if (!receipt) return;
+    const link = document.createElement('a');
+    link.href = receipt;
+    link.download = name || 'comprovante-manutencao';
+    link.click();
   };
 
   const handlePrintReport = () => {
@@ -178,60 +337,16 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
 
   return (
     <div className="space-y-6">
-      <NeumorphicCard>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold">Controle de Frota</h2>
-            <p className="text-sm text-slate-500">Cadastro de veículos, manutenção e histórico por unidade.</p>
+      {fleetAlerts.length > 0 && (
+        <div className="rounded-3xl border border-rose-400 bg-rose-100 p-4 text-sm text-rose-900 shadow-sm">
+          <div className="mb-2 font-semibold uppercase tracking-wide">Avisos de manutenção</div>
+          <div className="space-y-2">
+            {fleetAlerts.map((alert, index) => (
+              <p key={`${alert}-${index}`} className="font-semibold">{alert}</p>
+            ))}
           </div>
         </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-3 rounded-3xl bg-white/60 p-4 shadow-sm">
-            <h3 className="text-lg font-semibold">Cadastrar veículo</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input className="neumorphic-input" placeholder="Nome do veículo" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
-              <input className="neumorphic-input" placeholder="Placa" value={form.plate} onChange={(e) => setForm((prev) => ({ ...prev, plate: e.target.value.toUpperCase() }))} />
-              <input className="neumorphic-input" placeholder="Marca" value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
-              <input className="neumorphic-input" placeholder="Modelo" value={form.model} onChange={(e) => setForm((prev) => ({ ...prev, model: e.target.value }))} />
-              <input type="number" className="neumorphic-input" placeholder="Ano" value={form.year} onChange={(e) => setForm((prev) => ({ ...prev, year: Number(e.target.value || 0) }))} />
-              <input type="number" className="neumorphic-input" placeholder="KM atual" value={form.currentOdometer} onChange={(e) => setForm((prev) => ({ ...prev, currentOdometer: Number(e.target.value || 0) }))} />
-              <select className="neumorphic-select sm:col-span-2" value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}>
-                <option value="Ativo">Ativo</option>
-                <option value="Em manutenção">Em manutenção</option>
-                <option value="Inativo">Inativo</option>
-              </select>
-            </div>
-            <button className="neumorphic-button primary" onClick={addVehicle}>Adicionar veículo</button>
-          </div>
-
-          <div className="space-y-3 rounded-3xl bg-white/60 p-4 shadow-sm">
-            <h3 className="text-lg font-semibold">Veículos cadastrados</h3>
-            <div className="space-y-2">
-              {vehicles.length === 0 ? (
-                <div className="text-sm text-slate-500">Nenhum veículo cadastrado.</div>
-              ) : (
-                vehicles.map((vehicle) => (
-                  <button
-                    key={vehicle.id}
-                    type="button"
-                    className={`w-full rounded-3xl border p-3 text-left shadow-sm transition ${selectedVehicleId === vehicle.id || (!selectedVehicleId && activeVehicle?.id === vehicle.id) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white/80'}`}
-                    onClick={() => setSelectedVehicleId(vehicle.id)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-semibold">{vehicle.name}</div>
-                        <div className="text-xs text-slate-500">{vehicle.plate} • {vehicle.brand} {vehicle.model}</div>
-                      </div>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-700">{vehicle.status}</span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </NeumorphicCard>
+      )}
 
       {activeVehicle && (
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -241,21 +356,78 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
                 <h3 className="text-xl font-semibold">{activeVehicle.name}</h3>
                 <p className="text-sm text-slate-500">{activeVehicle.plate} • {activeVehicle.brand} {activeVehicle.model} • {activeVehicle.year}</p>
               </div>
-              <button className="neumorphic-button outline" onClick={() => removeVehicle(activeVehicle.id)}>Remover veículo</button>
+              <div className="flex gap-2">
+                <button className="neumorphic-button outline" onClick={() => openVehicleEditor(activeVehicle)}>Editar</button>
+                <button className="neumorphic-button outline" onClick={() => removeVehicle(activeVehicle.id)}>Remover</button>
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-3xl bg-white/70 p-3 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">KM atual</div>
-                <div className="mt-1 text-lg font-semibold">{Number(activeVehicle.currentOdometer || 0).toLocaleString('pt-BR')} km</div>
-              </div>
-              <div className="rounded-3xl bg-white/70 p-3 shadow-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Última manutenção</div>
-                <div className="mt-1 text-lg font-semibold">{activeVehicle.maintenanceHistory?.length ? activeVehicle.maintenanceHistory[activeVehicle.maintenanceHistory.length - 1].date : 'Nenhuma'}</div>
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-3xl bg-white/70 p-3 shadow-sm">
                 <div className="text-xs uppercase tracking-wide text-slate-500">Status</div>
-                <div className="mt-1 text-lg font-semibold">{activeVehicle.status}</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <select
+                    className="neumorphic-select w-full"
+                    value={activeVehicle.status}
+                    onChange={(event) => updateStatusWithReturnDate(event.target.value)}
+                  >
+                    <option value="Ativo">Ativo</option>
+                    <option value="Em manutenção">Em manutenção</option>
+                    <option value="Inativo">Inativo</option>
+                  </select>
+                </div>
+                {activeVehicle.status === 'Em manutenção' && (
+                  <div className="mt-3">
+                    <label className="text-xs uppercase tracking-wide text-slate-500">Previsão de retorno</label>
+                    <input
+                      type="date"
+                      className="neumorphic-input mt-1 w-full"
+                      value={activeVehicle.returnDate || ''}
+                      onChange={(event) => {
+                        const nextVehicles = vehicles.map((vehicle) => vehicle.id === activeVehicle.id ? { ...vehicle, returnDate: event.target.value } : vehicle);
+                        onUpdateConfig({ ...safeConfig, fleetVehicles: nextVehicles });
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-3xl bg-white/70 p-3 shadow-sm">
+                <div className="text-xs uppercase tracking-wide text-slate-500">Última manutenção</div>
+                <div className="mt-2 text-lg font-semibold">{activeVehicle.maintenanceHistory?.length ? formatDatePtBR(activeVehicle.maintenanceHistory[activeVehicle.maintenanceHistory.length - 1].date) : 'Nenhuma'}</div>
+                {activeVehicle.scheduledMaintenance && (
+                  <div className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                    <div className="font-semibold">Manutenção programada</div>
+                    <div>{activeVehicle.scheduledMaintenance.type}</div>
+                    <div>{activeVehicle.scheduledMaintenance.location || 'Local não informado'}</div>
+                    <div>{formatDatePtBR(activeVehicle.scheduledMaintenance.dueDate)}</div>
+                  </div>
+                )}
+                {vehicleUsageDetails[activeVehicle.id] && (
+                  <div className="mt-3 rounded-2xl border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900">
+                    <div className="font-semibold">Veículo em uso</div>
+                    <div>Evento: {vehicleUsageDetails[activeVehicle.id].eventName}</div>
+                    {vehicleUsageDetails[activeVehicle.id].professionals?.length > 0 && (
+                      <div>Profissionais: {vehicleUsageDetails[activeVehicle.id].professionals.join(', ')}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl bg-white/70 p-4 shadow-sm">
+              <h4 className="text-lg font-semibold">Programar manutenção</h4>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <select className="neumorphic-select" value={serviceForm.type} onChange={(e) => setServiceForm((prev) => ({ ...prev, type: e.target.value }))}>
+                  {DEFAULT_FLEET_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <input type="date" className="neumorphic-input" value={serviceForm.date} onChange={(e) => setServiceForm((prev) => ({ ...prev, date: e.target.value }))} />
+                <input className="neumorphic-input sm:col-span-2" placeholder="Local da manutenção" value={serviceForm.location} onChange={(e) => setServiceForm((prev) => ({ ...prev, location: e.target.value }))} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button className="neumorphic-button primary" onClick={saveScheduledMaintenance}>Salvar programação</button>
               </div>
             </div>
 
@@ -268,12 +440,19 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-                <input type="number" className="neumorphic-input" placeholder="KM do registro" value={serviceForm.odometer} onChange={(e) => setServiceForm((prev) => ({ ...prev, odometer: Number(e.target.value || 0) }))} />
+                <input className="neumorphic-input sm:col-span-2" placeholder="Local da manutenção" value={serviceForm.location} onChange={(e) => setServiceForm((prev) => ({ ...prev, location: e.target.value }))} />
                 <input type="number" className="neumorphic-input" placeholder="Custo (R$)" value={serviceForm.cost} onChange={(e) => setServiceForm((prev) => ({ ...prev, cost: e.target.value }))} />
+                <label className="flex items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/80 px-3 py-2 text-sm text-slate-600">
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleReceiptUpload} />
+                  {serviceForm.receiptName || 'Anexar comprovante'}
+                </label>
                 <textarea className="neumorphic-input sm:col-span-2" rows="3" placeholder="Descrição da manutenção" value={serviceForm.description} onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))} />
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
                 <button className="neumorphic-button primary" onClick={addMaintenance}>Salvar manutenção</button>
+                {serviceForm.receipt && (
+                  <button className="neumorphic-button secondary" onClick={() => downloadReceipt(serviceForm.receipt, serviceForm.receiptName || 'comprovante-manutencao')}>Download do comprovante</button>
+                )}
                 <button className="neumorphic-button secondary" onClick={handlePrintReport}>Gerar relatório</button>
               </div>
             </div>
@@ -289,12 +468,15 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
                   <div key={entry.id} className="rounded-3xl bg-white/70 p-3 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-semibold">{entry.type}</div>
-                      <div className="text-xs text-slate-500">{entry.date}</div>
+                      <div className="text-xs text-slate-500">{formatDatePtBR(entry.date)}</div>
                     </div>
+                    <p className="mt-1 text-sm text-slate-600">{entry.location || 'Local não informado'}</p>
                     <p className="mt-1 text-sm text-slate-600">{entry.description}</p>
                     <div className="mt-2 flex justify-between text-xs text-slate-500">
-                      <span>KM: {Number(entry.odometer || 0).toLocaleString('pt-BR')}</span>
                       <span>Custo: R$ {Number(entry.cost || 0).toFixed(2)}</span>
+                      {entry.receipt && (
+                        <button className="text-sky-700 underline" onClick={() => downloadReceipt(entry.receipt, entry.receiptName || 'comprovante-manutencao')}>Download</button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -305,6 +487,64 @@ export default function FleetModule({ config = {}, onUpdateConfig = () => {}, cu
           </NeumorphicCard>
         </div>
       )}
+
+      <NeumorphicCard>
+        <div className="space-y-3 rounded-3xl bg-white/60 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold">Cadastrar veículo</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input className="neumorphic-input" placeholder="Nome do veículo" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <input className="neumorphic-input" placeholder="Placa" value={form.plate} onChange={(e) => setForm((prev) => ({ ...prev, plate: e.target.value.toUpperCase() }))} />
+            <input className="neumorphic-input" placeholder="Marca" value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
+            <input className="neumorphic-input" placeholder="Modelo" value={form.model} onChange={(e) => setForm((prev) => ({ ...prev, model: e.target.value }))} />
+            <input type="number" className="neumorphic-input" placeholder="Ano" value={form.year} onChange={(e) => setForm((prev) => ({ ...prev, year: Number(e.target.value || 0) }))} />
+            <select className="neumorphic-select" value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value, returnDate: e.target.value === 'Em manutenção' ? prev.returnDate : '' }))}>
+              <option value="Ativo">Ativo</option>
+              <option value="Em manutenção">Em manutenção</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+            {form.status === 'Em manutenção' && (
+              <input
+                type="date"
+                className="neumorphic-input"
+                placeholder="Previsão de retorno"
+                value={form.returnDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, returnDate: e.target.value }))}
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button className="neumorphic-button primary" onClick={addVehicle}>{isEditingVehicle ? 'Salvar veículo' : 'Adicionar veículo'}</button>
+            {isEditingVehicle && (
+              <button className="neumorphic-button outline" onClick={() => { setIsEditingVehicle(false); setForm({ name: '', plate: '', brand: '', model: '', year: new Date().getFullYear(), status: 'Ativo', returnDate: '' }); }}>Cancelar</button>
+            )}
+          </div>
+        </div>
+      </NeumorphicCard>
+
+      {!vehicles.length && (
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          Nenhum veículo cadastrado.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {vehicles.map((vehicle) => (
+          <button
+            key={vehicle.id}
+            type="button"
+            className={`w-full rounded-3xl border p-3 text-left shadow-sm transition ${selectedVehicleId === vehicle.id || (!selectedVehicleId && activeVehicle?.id === vehicle.id) ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white/80'}`}
+            onClick={() => setSelectedVehicleId(vehicle.id)}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="font-semibold">{vehicle.name}</div>
+                <div className="text-xs text-slate-500">{vehicle.plate} • {vehicle.brand} {vehicle.model}</div>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-700">{vehicle.status}</span>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
