@@ -70,4 +70,26 @@ describe('mergeAppData', () => {
     expect(result.inventory).toEqual(remote.inventory);
     expect(result.updatedAt).toBeTypeOf('number');
   });
+
+  it('keeps the local state when the remote payload is content-equal but timestamped later', () => {
+    const local = {
+      updatedAt: 100,
+      users: [{ id: 1, name: 'Ana' }],
+      events: [{ id: 7, name: 'Evento igual' }],
+      inventory: [{ id: 2, name: 'Gerador' }],
+      config: { itemTypes: ['GERADOR'] },
+    };
+
+    const remote = {
+      updatedAt: 200,
+      users: [{ id: 1, name: 'Ana' }],
+      events: [{ id: 7, name: 'Evento igual' }],
+      inventory: [{ id: 2, name: 'Gerador' }],
+      config: { itemTypes: ['GERADOR'] },
+    };
+
+    const result = mergeAppData(local, remote);
+
+    expect(result).toEqual(local);
+  });
 });

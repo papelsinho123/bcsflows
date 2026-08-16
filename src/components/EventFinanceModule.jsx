@@ -19,19 +19,28 @@ function loadScript(src) {
 
 const CORE_EXPENSE_TYPES = ['HOSPEDAGEM', 'COMBUSTIVEL', 'ESTACIONAMENTO', 'OUTRO'];
 
+export const matchesEventId = (a, b) => String(a) === String(b);
+
 export default function EventFinanceModule({ events = [], users = [], config = {}, currentUser, onEventsChange }) {
   const [selectedEventId, setSelectedEventId] = useState(() => (events[0] ? events[0].id : null));
   const [form, setForm] = useState({ date: '', amount: '', type: 'BCS', expenseType: '', otherType: '', paymentType: '', note: '' });
+
+  useEffect(() => {
+    if (!selectedEventId && events[0]) {
+      setSelectedEventId(events[0].id);
+      return;
+    }
+
+    if (selectedEventId && !events.some((event) => matchesEventId(event.id, selectedEventId))) {
+      setSelectedEventId(events[0]?.id ?? null);
+    }
+  }, [events, selectedEventId]);
   const [fileUpload, setFileUpload] = useState(null);
   const [showReport, setShowReport] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
 
-  useEffect(() => {
-    if (!selectedEventId && events[0]) setSelectedEventId(events[0].id);
-  }, [events]);
-
-  const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId) || null, [events, selectedEventId]);
+  const selectedEvent = useMemo(() => events.find((e) => matchesEventId(e.id, selectedEventId)) || null, [events, selectedEventId]);
 
   const finances = selectedEvent?.finances || [];
 
@@ -62,7 +71,7 @@ export default function EventFinanceModule({ events = [], users = [], config = {
   };
 
   const saveEventFinances = (newFinances) => {
-    const newEvents = events.map((ev) => (ev.id === selectedEventId ? { ...ev, finances: newFinances } : ev));
+    const newEvents = events.map((ev) => (matchesEventId(ev.id, selectedEventId) ? { ...ev, finances: newFinances } : ev));
     onEventsChange(newEvents);
   };
 

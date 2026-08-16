@@ -12,6 +12,25 @@ const getApiBase = () => {
   return import.meta.env.VITE_API_BASE || fromWindow || '/bcsflows/api';
 };
 
+const stripUpdatedAt = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUpdatedAt(item));
+  }
+
+  if (value && typeof value === 'object') {
+    const next = { ...value };
+    delete next.updatedAt;
+
+    Object.keys(next).forEach((key) => {
+      next[key] = stripUpdatedAt(next[key]);
+    });
+
+    return next;
+  }
+
+  return value;
+};
+
 const withTimestamp = (data) => ({
   ...(data && typeof data === 'object' ? data : {}),
   updatedAt: Number(data?.updatedAt || Date.now()),
@@ -162,6 +181,13 @@ export const mergeAppData = (localData = {}, remoteData = {}) => {
     };
   }
 
+  if (JSON.stringify(stripUpdatedAt(local)) === JSON.stringify(stripUpdatedAt(remote))) {
+    return {
+      ...local,
+      updatedAt: localStamp || remoteStamp || Date.now(),
+    };
+  }
+
   if (!localStamp || remoteStamp > localStamp) {
     const nextConfig = {
       ...(local.config || {}),
@@ -224,4 +250,4 @@ export const writeLocalData = (data) => {
   }
 };
 
-export const isSameData = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+export const isSameData = (left, right) => JSON.stringify(stripUpdatedAt(left)) === JSON.stringify(stripUpdatedAt(right));
