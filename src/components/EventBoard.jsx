@@ -379,26 +379,85 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
           )}
 
           {visibleEventList.length > 0 && (
-            <div className="mt-5 space-y-3">
-              {visibleEventList.map((event) => {
-                const isActive = String(event.id) === String(activeEventId);
-                return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    className={`neumorphic-button w-full justify-between ${isActive ? 'primary' : 'secondary'}`}
-                    onClick={() => {
-                      setActiveEventId(event.id);
-                      setShowEventSelector(false);
-                    }}
-                  >
-                    <span className="truncate text-left font-semibold">{event.name || 'Evento sem nome'}</span>
-                    <span className="text-xs opacity-80">
-                      {event.departureDate || event.startDate || event.eventDate || 'Sem data'}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="mt-5 space-y-5">
+              {Object.entries(groupedActiveEvents).length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-slate-800">Eventos ativos</h3>
+                  {Object.entries(groupedActiveEvents).map(([monthLabel, eventsInMonth]) => (
+                    <div key={monthLabel} className="space-y-2">
+                      <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                        {monthLabel}
+                      </div>
+                      <div className="grid gap-3 xl:grid-cols-2">
+                        {eventsInMonth.map((event) => {
+                          const isActive = String(event.id) === String(activeEventId);
+                          return (
+                            <button
+                              key={event.id}
+                              type="button"
+                              className={`w-full rounded-3xl border p-4 text-left shadow-sm transition ${isActive ? 'border-cyan-300 bg-cyan-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                              onClick={() => handleSelectEvent(event.id)}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-lg font-semibold text-slate-900">{event.name || 'Evento sem nome'}</div>
+                                  <div className="mt-1 text-sm text-slate-600">{event.clientName || 'Cliente não informado'}</div>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+                                  {event.status || 'A Iniciar'}
+                                </span>
+                              </div>
+                              <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                                <div><span className="font-semibold text-slate-700">Saída:</span> {formatShortDate(event.departureDate || event.startDate || event.eventDate)}</div>
+                                <div><span className="font-semibold text-slate-700">Retorno:</span> {formatShortDate(event.returnDate || event.endDate)}</div>
+                                <div className="sm:col-span-2"><span className="font-semibold text-slate-700">Local:</span> {event.locationName || 'Não informado'}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {Object.entries(groupedCompletedEvents).length > 0 && (
+                <div className="space-y-3 border-t border-slate-200 pt-4">
+                  <h3 className="text-lg font-semibold text-slate-800">Eventos encerrados</h3>
+                  {Object.entries(groupedCompletedEvents).map(([monthLabel, eventsInMonth]) => (
+                    <div key={`${monthLabel}-closed`} className="space-y-2">
+                      <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                        {monthLabel}
+                      </div>
+                      <div className="grid gap-3 xl:grid-cols-2">
+                        {eventsInMonth.map((event) => (
+                          <button
+                            key={`${event.id}-closed`}
+                            type="button"
+                            className="w-full rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-left shadow-sm transition hover:border-emerald-300"
+                            onClick={() => handleSelectEvent(event.id)}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-lg font-semibold text-slate-900">{event.name || 'Evento sem nome'}</div>
+                                <div className="mt-1 text-sm text-slate-600">{event.clientName || 'Cliente não informado'}</div>
+                              </div>
+                              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
+                                Encerrado
+                              </span>
+                            </div>
+                            <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                              <div><span className="font-semibold text-slate-700">Saída:</span> {formatShortDate(event.departureDate || event.startDate || event.eventDate)}</div>
+                              <div><span className="font-semibold text-slate-700">Retorno:</span> {formatShortDate(event.returnDate || event.endDate)}</div>
+                              <div className="sm:col-span-2"><span className="font-semibold text-slate-700">Local:</span> {event.locationName || 'Não informado'}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
