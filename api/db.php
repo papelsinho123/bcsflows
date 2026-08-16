@@ -2,10 +2,10 @@
 // db.php
 // Conexão do banco do BCS Flows.
 
-$db_host = getenv('BCS_DB_HOST') ?: getenv('DB_HOST') ?: 'localhost';
-$db_user = getenv('BCS_DB_USER') ?: getenv('DB_USER') ?: '';
-$db_pass = getenv('BCS_DB_PASS') ?: getenv('DB_PASS') ?: '';
-$db_name = getenv('BCS_DB_NAME') ?: getenv('DB_NAME') ?: '';
+$db_host = getenv('BCS_DB_HOST') ?: getenv('DB_HOST') ?: 'bcsflows.mysql.dbaas.com.br';
+$db_user = getenv('BCS_DB_USER') ?: getenv('DB_USER') ?: 'bcsflows';
+$db_pass = getenv('BCS_DB_PASS') ?: getenv('DB_PASS') ?: 'And@99188280';
+$db_name = getenv('BCS_DB_NAME') ?: getenv('DB_NAME') ?: 'bcsflows';
 $db_error = null;
 $conn = null;
 
