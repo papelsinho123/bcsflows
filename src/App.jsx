@@ -426,7 +426,11 @@ function App() {
       <div className="max-w-[1700px] mx-auto space-y-6">
         <header className="neumorphic-card p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-200 text-xs font-bold text-slate-700 shadow-md">BCS</div>
+            <img 
+              src={theme === 'dark' ? assetUrl('dark.png') : assetUrl('light.png')} 
+              alt="BCS Flows Logo" 
+              className="h-12 w-auto"
+            />
             <div>
               <p className="text-slate-500">BCS Flows - <strong>Planejamento estratégico.</strong> Operação sem falhas.</p>
             </div>
