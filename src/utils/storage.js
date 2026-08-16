@@ -67,7 +67,8 @@ export const loadServerData = async () => {
       log(`📡 Carregando de ${endpoint}...`);
       const response = await fetch(endpoint, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         cache: 'no-store',
       });
 
@@ -119,7 +120,8 @@ export const saveToServer = async (data) => {
       log(`📤 Salvando em ${endpoint}...`);
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(snapshot),
       });
 
