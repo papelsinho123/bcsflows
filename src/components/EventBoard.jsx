@@ -9,33 +9,26 @@ import { canManageAdminFeatures, normalizeUserRole } from '../utils/auth.js';
 const defaultBoardTitles = ['INFORMAÇÕES DO EVENTO', 'MONTAGEM DO EVENTO', 'SEPARAR ITENS PARA O EVENTO', 'HOSPEDAGEM', 'DESLOCAMENTO', 'DESMONTAGEM'];
 
 function formatPhoneUrl(phone) {
-  const digits = phone.replace(/[^0-9]/g, '');
+  const digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return '';
   if (digits.length === 13 && digits.startsWith('55')) return digits;
   if (digits.length === 11 || digits.length === 10) return `55${digits}`;
+  if (digits.length > 11 && digits.startsWith('55')) return digits;
   return digits;
 }
 
 function formatWhatsappMask(value) {
-  let digits = value.replace(/\D/g, '');
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
   if (!digits) return '';
-  if (digits.startsWith('55') && digits.length > 11) {
-    digits = digits.slice(2);
-  }
-  if (digits.length <= 2) return digits;
+
   const ddd = digits.slice(0, 2);
   const rest = digits.slice(2);
-  let formatted = `(${ddd})`;
-  if (rest.length <= 4) {
-    formatted += ` ${rest}`;
-  } else if (rest.length <= 5) {
-    formatted += ` ${rest}`;
-  } else {
-    const prefix = rest.slice(0, rest.length - 4);
-    const suffix = rest.slice(rest.length - 4);
-    formatted += ` ${prefix}-${suffix}`;
+
+  if (rest.length <= 5) {
+    return `(${ddd})${rest}`;
   }
-  return formatted;
+
+  return `(${ddd})${rest.slice(0, 5)}-${rest.slice(5)}`;
 }
 
 function formatShortDate(value) {
@@ -663,7 +656,12 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                 </label>
                 <label className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">WhatsApp responsável</span>
-                  <input className="neumorphic-input w-full" value={form.organizerWhatsApp} onChange={(e) => handleForm('organizerWhatsApp', e.target.value)} />
+                  <input
+                    className="neumorphic-input w-full"
+                    value={form.organizerWhatsApp}
+                    placeholder="(XX)XXXXX-XXXX"
+                    onChange={(e) => handleForm('organizerWhatsApp', formatWhatsappMask(e.target.value))}
+                  />
                 </label>
                 <label className="space-y-2 md:col-span-2">
                   <span className="text-sm font-medium text-slate-700">Endereço</span>
@@ -822,7 +820,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
   };
 
   const handleForm = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: field === 'organizerWhatsApp' ? formatWhatsappMask(value) : value }));
     setFormErrors((prev) => prev.filter((error) => error.field !== field));
   };
 
