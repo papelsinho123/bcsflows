@@ -506,7 +506,21 @@ export default function EventCalendarModule({ events = [], users = [], inventory
                   </div>
                   <div className="space-y-1 text-[10px] leading-4">
                     {(cell.events || []).slice(0, 2).map((event) => {
-                      const eventUsers = (users || []).filter((user) => (event.users || []).includes(user.id));
+                      // Fallback para obter usuários do evento
+                      let eventUsers = [];
+                      if (users.length > 0) {
+                        eventUsers = (users || []).filter((user) => (event.users || []).some(userId => String(user.id) === String(userId)));
+                      } else if ((event.userAssignments || []).length > 0) {
+                        eventUsers = (event.userAssignments || []).map((assignment) => ({
+                          id: assignment.userId,
+                          name: `Prof ${assignment.userId}`
+                        }));
+                      } else if ((event.users || []).length > 0) {
+                        eventUsers = (event.users || []).map((userId) => ({
+                          id: userId,
+                          name: `Prof ${userId}`
+                        }));
+                      }
                       let eventClass = 'border-amber-300 bg-amber-100 text-amber-900';
                       if (event.type === 'DESLOCAMENTO') eventClass = 'border-sky-300 bg-sky-100 text-sky-900';
                       if (event.type === 'MONTAGEM_CAEX') eventClass = 'border-teal-300 bg-teal-100 text-teal-900';
@@ -553,7 +567,22 @@ export default function EventCalendarModule({ events = [], users = [], inventory
           ) : (
             <div className="mt-4 space-y-3">
               {selectedDateEvents.map((event) => {
-                const eventUsers = (users || []).filter((user) => (event.users || []).includes(user.id));
+                // Fallback para obter usuários do evento
+                let eventUsers = [];
+                if (users.length > 0) {
+                  eventUsers = (users || []).filter((user) => (event.users || []).some(userId => String(user.id) === String(userId)));
+                } else if ((event.userAssignments || []).length > 0) {
+                  eventUsers = (event.userAssignments || []).map((assignment) => ({
+                    id: assignment.userId,
+                    name: `Prof ${assignment.userId}`
+                  }));
+                } else if ((event.users || []).length > 0) {
+                  eventUsers = (event.users || []).map((userId) => ({
+                    id: userId,
+                    name: `Prof ${userId}`
+                  }));
+                }
+                
                 const assignmentUsers = event.userAssignments || [];
                 const assignedUserNames = (users || []).filter((user) => (event.userAssignments || []).some((assignment) => assignment.userId === user.id));
                 

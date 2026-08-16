@@ -401,7 +401,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
             </div>
           )}
 
-          {visibleEventList.length > 0 && (
+          {visibleEventList.length > 0 && !(showEventForm && editingEventId) && (
             <div className="mt-5 space-y-5">
               {Object.entries(groupedActiveEvents).length > 0 && (
                 <div className="space-y-3">
@@ -2276,7 +2276,7 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
       returnDate: assignment.returnDate || assignment.endDate || '',
     })));
     setShowEventForm(true);
-    setShowEventSelector(false);
+    setShowEventSelector(true);
     setActiveEventId(event.id);
     setExpandedBoard([]);
   };
@@ -2643,21 +2643,40 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                     {title === 'INFORMAÇÕES DO EVENTO' && (
                       <div className="space-y-3 text-sm text-slate-600">
                         {/* Profissionais em destaque */}
-                        {(selectedEvent.users || []).length > 0 && (
-                          <div className="rounded-3xl border-2 border-cyan-400 bg-cyan-50 p-4">
-                            <div className="font-bold text-cyan-900 mb-2">👥 Profissionais do Evento</div>
-                            <div className="flex flex-wrap gap-2">
-                              {(selectedEvent.users || [])
-                                .map((userId) => users.find((u) => u.id === userId))
-                                .filter(Boolean)
-                                .map((u) => (
+                        {(() => {
+                          // Lógica de fallback para obter profissionais
+                          let profissionais = [];
+                          if (users.length > 0) {
+                            profissionais = (selectedEvent.users || [])
+                              .map((userId) => users.find((u) => String(u.id) === String(userId)))
+                              .filter(Boolean);
+                          } else if ((selectedEvent.userAssignments || []).length > 0) {
+                            profissionais = (selectedEvent.userAssignments || []).map((assignment) => ({
+                              id: assignment.userId,
+                              name: `Profissional ${assignment.userId}`,
+                              usuario: `user_${assignment.userId}`
+                            }));
+                          } else if ((selectedEvent.users || []).length > 0) {
+                            profissionais = (selectedEvent.users || []).map((userId) => ({
+                              id: userId,
+                              name: `Profissional ${userId}`,
+                              usuario: `user_${userId}`
+                            }));
+                          }
+                          
+                          return profissionais.length > 0 && (
+                            <div className="rounded-3xl border-2 border-cyan-400 bg-cyan-50 p-4">
+                              <div className="font-bold text-cyan-900 mb-2">👥 Profissionais do Evento ({profissionais.length})</div>
+                              <div className="flex flex-wrap gap-2">
+                                {profissionais.map((u) => (
                                   <span key={u.id} className="inline-block rounded-full bg-cyan-200 text-cyan-900 px-3 py-1 text-xs font-semibold">
                                     {u.name || u.usuario}
                                   </span>
                                 ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Cliente:</span> {selectedEvent.clientName || 'Não informado'}</p>
                           <p><span className="font-semibold">Responsável:</span> {selectedEvent.organizerName || 'Não informado'}</p>
@@ -2677,11 +2696,21 @@ export default function EventBoard({ events = [], inventory = [], config = {}, u
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <p><span className="font-semibold">Tamanho da Etiqueta:</span> {selectedEvent.labelSize}</p>
-                          <p><span className="font-semibold">Profissionais:</span> {(selectedEvent.users || [])
-                              .map((userId) => users.find((u) => u.id === userId))
-                              .filter(Boolean)
-                              .map((u) => u.name)
-                              .join(', ') || 'Nenhum profissional adicionado'}
+                          <p><span className="font-semibold">Profissionais:</span> {(() => {
+                            // Lógica de fallback para obter nomes dos profissionais
+                            let nomes = [];
+                            if (users.length > 0) {
+                              nomes = (selectedEvent.users || [])
+                                .map((userId) => users.find((u) => String(u.id) === String(userId)))
+                                .filter(Boolean)
+                                .map((u) => u.name);
+                            } else if ((selectedEvent.userAssignments || []).length > 0) {
+                              nomes = (selectedEvent.userAssignments || []).map((assignment) => `Profissional ${assignment.userId}`);
+                            } else if ((selectedEvent.users || []).length > 0) {
+                              nomes = (selectedEvent.users || []).map((userId) => `Profissional ${userId}`);
+                            }
+                            return nomes.length > 0 ? nomes.join(', ') : 'Nenhum profissional adicionado';
+                          })()}
                           </p>
                         </div>
                             <div className="flex flex-wrap items-center gap-3 pt-2">
